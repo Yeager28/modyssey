@@ -311,6 +311,51 @@ impl NexusDownloader {
             .context("No download links returned by Nexus API")
     }
 
+    /// List the files of a mod (`files.json`), including the update chain.
+    pub async fn list_files(
+        &self,
+        game_domain: &str,
+        mod_id: u64,
+    ) -> Result<super::nexus_files::NexusFileListing> {
+        let url = format!(
+            "{}/v1/games/{}/mods/{}/files.json",
+            API_BASE_URL, game_domain, mod_id
+        );
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("Failed to fetch file list from {}", url))?;
+        if let Some(limits) = NexusRateLimits::from_response(&response) {
+            *self.rate_limits.write().unwrap() = limits;
+        }
+        self.request_count.fetch_add(1, Ordering::Relaxed);
+
+        let status = response.status();
+        if status.as_u16() == 429 {
+            let limits = self.rate_limits.read().unwrap();
+            bail!(
+                "Nexus API rate limit hit (429). Hourly: {}/{}, Daily: {}/{}. Wait for the limit to reset.",
+                limits.hourly_remaining,
+                limits.hourly_limit,
+                limits.daily_remaining,
+                limits.daily_limit
+            );
+        }
+        if status.as_u16() == 404 {
+            bail!("Nexus mod {game_domain}/{mod_id} was not found (hidden or removed)");
+        }
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            bail!("Nexus API error {}: {}", status, body);
+        }
+        response
+            .json()
+            .await
+            .context("Failed to parse the Nexus file list")
+    }
+
     /// Get the mod page URL for manual fallback
     pub fn get_mod_page_url(game_domain: &str, mod_id: u64, file_id: u64) -> String {
         format!(

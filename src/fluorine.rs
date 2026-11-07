@@ -28,6 +28,12 @@ fn fluorine_settings_path() -> Result<PathBuf> {
     Ok(config.join("Mod Organizer Team").join("Mod Organizer.conf"))
 }
 
+/// Whether Fluorine has been run on this machine (its settings file exists),
+/// even if its program is somewhere `detect` does not look.
+pub fn settings_exist() -> bool {
+    fluorine_settings_path().is_ok_and(|p| p.is_file())
+}
+
 /// Default location for auto-installed Fluorine releases.
 fn default_install_root() -> Result<PathBuf> {
     let data = dirs::data_local_dir().context("Could not determine $XDG_DATA_HOME")?;

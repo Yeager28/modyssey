@@ -379,7 +379,7 @@ impl WabbajackCdnDownloader {
     }
 }
 
-fn validate_definition(definition: &CdnFileDefinition) -> Result<()> {
+pub(crate) fn validate_definition(definition: &CdnFileDefinition) -> Result<()> {
     use base64::Engine;
     let valid_hash = |hash: &str| {
         base64::engine::general_purpose::STANDARD

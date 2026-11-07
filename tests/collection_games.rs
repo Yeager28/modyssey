@@ -43,7 +43,7 @@ fn plugin(game: &GameProfile, master: Option<&str>, flags: u32) -> Vec<u8> {
 fn fixture(root: &Path, game: &GameProfile) -> (CollectionPackage, CollectionPlan) {
     let dir = root.join("package");
     write(&dir.join("collection.json"), serde_json::to_vec(&json!({
-        "info":{"domainName":game.domain,"name":"Cross-game fixture"},
+        "info":{"domainName":game.nexus_domain(),"name":"Cross-game fixture","gameVersions":game.variant.as_ref().map(|v| vec![format!("1.0.0.0{}", v.version_suffix.to_uppercase())]).unwrap_or_default()},
         "mods":[{"name":"Exact payload","source":{"type":"bundle","fileExpression":"A","tag":"a"}}],
         "plugins":[{"name":"A.esp","enabled":true},{"name":"B.esp","enabled":true},{"name":"Off.esp","enabled":false}]
     })).unwrap());
@@ -75,10 +75,15 @@ fn fixture(root: &Path, game: &GameProfile) -> (CollectionPackage, CollectionPla
         &dir.join(format!("INI Tweaks/Profile [{stem}].ini")),
         b"[General]\nbAlwaysActive=1\n",
     );
-    write(
-        &root.join("game").join(game.executable),
-        b"fixture game executable",
-    );
+    // Variant games declare game versions, so their executable carries a
+    // version resource (1.0.0.0) for the planner to read back.
+    let mut exe = b"fixture game executable".to_vec();
+    if game.variant.is_some() {
+        exe.extend([0xbd, 0x04, 0xef, 0xfe, 0, 0, 1, 0]);
+        exe.extend(1u32.wrapping_shl(16).to_le_bytes());
+        exe.extend(0u32.to_le_bytes());
+    }
+    write(&root.join("game").join(game.executable), exe);
     write(
         &root.join("game").join(game.default_ini),
         b"[General]\noriginal=1\n",
@@ -92,6 +97,7 @@ fn fixture(root: &Path, game: &GameProfile) -> (CollectionPackage, CollectionPla
         &package,
         &PlanOptions {
             schema_id: Some(1),
+            game_version: game.variant.as_ref().map(|_| "1.0.0.0".to_owned()),
             ..Default::default()
         },
     )
@@ -102,6 +108,8 @@ fn fixture(root: &Path, game: &GameProfile) -> (CollectionPackage, CollectionPla
         game.domain,
         plan.blockers
     );
+    // The collection must resolve to the adapter under test, not its base game.
+    assert_eq!(plan.profile().unwrap().domain, game.domain);
     (package, plan)
 }
 
@@ -158,8 +166,9 @@ fn each_game_publishes_its_own_layout_ini_launcher_and_activation_with_and_witho
             let config = std::fs::read_to_string(output.join("ModOrganizer.ini")).unwrap();
             assert!(config.contains(&format!("gameName={}\n", game.manager_name())));
             assert!(config.contains(&format!("/Stock Game/{}\n", game.extender)));
-            if game.domain != "skyrimspecialedition" {
-                assert!(!config.contains("SkyrimSE.exe"));
+            // No game inherits Skyrim SE's launcher unless it is its own.
+            assert!(!config.contains("SkyrimSE.exe"));
+            if game.extender != "skse64_loader.exe" {
                 assert!(!config.contains("skse64_loader.exe"));
             }
             let profile = output.join("profiles/Default");
@@ -391,7 +400,6 @@ fn unimplemented_adapters_remain_blocked_with_game_specific_reasons() {
         "morrowind",
         "starfield",
         "oblivionremastered",
-        "skyrimvr",
     ] {
         let temp = tempfile::tempdir().unwrap();
         write(
@@ -418,7 +426,7 @@ fn unimplemented_adapters_remain_blocked_with_game_specific_reasons() {
 }
 
 #[test]
-fn hosted_installation_cancels_resumes_and_verifies_all_six_game_adapters() {
+fn hosted_installation_cancels_resumes_and_verifies_every_game_adapter() {
     use clf3::collection::host::install_local;
     for game in games::PROFILES {
         let temp = tempfile::tempdir().unwrap();
@@ -472,4 +480,177 @@ fn hosted_installation_cancels_resumes_and_verifies_all_six_game_adapters() {
             before
         );
     }
+}
+
+#[test]
+fn enderal_profiles_follow_their_engines() {
+    let le = games::require("enderal").unwrap();
+    let se = games::require("enderalspecialedition").unwrap();
+    // Enderal runs on the Skyrim LE engine and Enderal SE on the SE engine.
+    assert!(!le.asterisk_plugins && !le.light_plugins && !le.timestamp_order);
+    assert!(se.asterisk_plugins && se.light_plugins && !se.timestamp_order);
+    assert_eq!(le.manager_name(), "Enderal");
+    assert_eq!(se.manager_name(), "Enderal Special Edition");
+    assert_eq!(le.extender, "skse_loader.exe");
+    assert_eq!(se.extender, "skse64_loader.exe");
+    // Both launch through the one executable every install has.
+    assert_eq!(le.executable, se.executable);
+    // Skyrim collections are not Enderal collections, and vice versa.
+    for other in ["skyrim", "skyrimspecialedition"] {
+        assert_ne!(games::require(other).unwrap().my_games, le.my_games);
+        assert_ne!(games::require(other).unwrap().my_games, se.my_games);
+    }
+    // The shared LOOT masterlist is pinned once and fetched from the same URL.
+    assert_eq!(le.masterlist.url(), se.masterlist.url());
+    assert!(le.masterlist.url().contains("/loot/enderal/63b9f2d1"));
+    // The SE plugin list carries the two plugins the game does not load alone.
+    let list = se
+        .plugin_list([("Enderal - Forgotten Stories.esm", true), ("SkyUI_SE.esp", true)])
+        .unwrap();
+    assert_eq!(list, b"*Enderal - Forgotten Stories.esm\n*SkyUI_SE.esp\n");
+    // Enderal LE lists only enabled plugins, without stars.
+    let list = le.plugin_list([("A.esp", true), ("B.esp", false)]).unwrap();
+    assert_eq!(list, b"A.esp\n");
+}
+
+fn versions(list: &[&str]) -> Vec<String> {
+    list.iter().map(|v| (*v).to_owned()).collect()
+}
+
+#[test]
+fn vr_collections_resolve_from_their_game_versions() {
+    // Nexus files VR mods under the base game's domain, so only the game
+    // versions name the edition.
+    let vr = |d, v: &[&str]| games::resolve(d, &versions(v)).map(|g| g.domain);
+    assert_eq!(vr("skyrimspecialedition", &["1.4.15.0-VR"]), Some("skyrimvr"));
+    assert_eq!(vr("skyrimspecialedition", &[" 1.4.15.0-vr "]), Some("skyrimvr"));
+    assert_eq!(vr("fallout4", &["1.2.72.0-VR"]), Some("fallout4vr"));
+    // Base-game collections, with no or ordinary versions, stay base-game.
+    assert_eq!(vr("skyrimspecialedition", &[]), Some("skyrimspecialedition"));
+    assert_eq!(vr("skyrimspecialedition", &["1.6.1170.0"]), Some("skyrimspecialedition"));
+    assert_eq!(vr("fallout4", &["1.10.163.0"]), Some("fallout4"));
+    // A collection that also lists the base game's versions is not VR-only.
+    assert_eq!(
+        vr("skyrimspecialedition", &["1.6.1170.0", "1.4.15.0-VR"]),
+        Some("skyrimspecialedition")
+    );
+    // The suffix never moves a game onto another game's VR edition.
+    assert_eq!(vr("fallout4", &["1.4.15.0-VR"]), Some("fallout4vr"));
+    assert_eq!(vr("newvegas", &["1.4.0.525-VR"]), Some("newvegas"));
+    assert_eq!(vr("skyrim", &["1.9.32.0-VR"]), Some("skyrim"));
+}
+
+#[test]
+fn vr_profiles_follow_their_engines() {
+    let svr = games::require("skyrimvr").unwrap();
+    let fvr = games::require("fallout4vr").unwrap();
+    assert_eq!(svr.nexus_domain(), "skyrimspecialedition");
+    assert_eq!(fvr.nexus_domain(), "fallout4");
+    assert_eq!(svr.executable, "SkyrimVR.exe");
+    assert_eq!(fvr.executable, "Fallout4VR.exe");
+    assert_eq!(svr.extender, "sksevr_loader.exe");
+    assert_eq!(fvr.extender, "f4sevr_loader.exe");
+    // Different launcher, game folder and Steam app than the flat games.
+    for (vr, flat) in [(svr, "skyrimspecialedition"), (fvr, "fallout4")] {
+        let flat = games::require(flat).unwrap();
+        assert_ne!(vr.executable, flat.executable);
+        assert_ne!(vr.extender, flat.extender);
+        assert_ne!(vr.my_games, flat.my_games);
+        assert!(vr.steam_ids.iter().all(|id| !flat.steam_ids.contains(id)));
+        assert!(vr.asterisk_plugins && !vr.timestamp_order);
+    }
+    assert_eq!(svr.manager_name(), "Skyrim VR");
+    assert_eq!(fvr.manager_name(), "Fallout 4 VR");
+    // Their own LOOT masterlists, not the flat game's.
+    assert!(svr.masterlist.url().contains("/loot/skyrimvr/"));
+    assert!(fvr.masterlist.url().contains("/loot/fallout4vr/"));
+    // Flat games must never claim a variant.
+    for flat in ["skyrimspecialedition", "fallout4"] {
+        assert!(games::require(flat).unwrap().variant.is_none());
+    }
+}
+
+#[test]
+fn a_vr_collection_is_refused_on_the_flat_games_folder() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path();
+    let svr = games::require("skyrimvr").unwrap();
+    let (package, plan) = fixture(root, svr);
+    assert_eq!(plan.domain, "skyrimspecialedition");
+    assert_eq!(plan.profile().unwrap().domain, "skyrimvr");
+    let staged = stage(
+        &package,
+        &plan,
+        &BTreeMap::new(),
+        &root.join("stage"),
+        &Default::default(),
+    )
+    .unwrap();
+    drop(staged);
+    // A Skyrim SE folder has SkyrimSE.exe, not SkyrimVR.exe.
+    let wrong = root.join("flat-game");
+    write(&wrong.join("SkyrimSE.exe"), b"flat game");
+    let err = clf3::collection::publish::publish(
+        &root.join("stage"),
+        &wrong,
+        &root.join("out"),
+        &Default::default(),
+        &Default::default(),
+    )
+    .unwrap_err();
+    assert!(
+        format!("{err:#}").contains("SkyrimVR.exe"),
+        "unexpected error: {err:#}"
+    );
+    assert!(!root.join("out").exists());
+}
+
+fn blockers_for(domain: &str, declared: &[&str], runtime: &str) -> Vec<String> {
+    let temp = tempfile::tempdir().unwrap();
+    write(
+        &temp.path().join("collection.json"),
+        serde_json::to_vec(&json!({
+            "info":{"domainName":domain,"name":"Versions","gameVersions":declared},
+            "mods":[]
+        }))
+        .unwrap(),
+    );
+    let package = CollectionPackage::open(temp.path()).unwrap();
+    CollectionPlan::build(
+        &package,
+        &PlanOptions {
+            schema_id: Some(1),
+            game_version: Some(runtime.into()),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+    .blockers
+    .into_iter()
+    .map(|b| b.code)
+    .collect()
+}
+
+#[test]
+fn vr_runtime_versions_match_their_suffixed_collection_versions() {
+    // The VR executable reports 1.4.15.0; the collection writes 1.4.15.0-VR.
+    assert!(blockers_for("skyrimspecialedition", &["1.4.15.0-VR"], "1.4.15.0").is_empty());
+    assert!(blockers_for("skyrimspecialedition", &["1.4.15.0-vr"], "1.4.15.0").is_empty());
+    assert!(blockers_for("fallout4", &["1.2.72.0-VR"], "1.2.72.0").is_empty());
+    // A different VR build is still a mismatch.
+    assert_eq!(
+        blockers_for("skyrimspecialedition", &["1.4.15.0-VR"], "1.4.15.1"),
+        ["game_version_mismatch"]
+    );
+    // Flat games stay exact: a mixed collection installs as the flat game, and a
+    // VR runtime must not satisfy it through the suffix rule.
+    assert_eq!(
+        blockers_for("skyrimspecialedition", &["1.6.1170.0", "1.4.15.0-VR"], "1.4.15.0"),
+        ["game_version_mismatch"]
+    );
+    assert!(blockers_for("skyrimspecialedition", &["1.6.1170.0"], "1.6.1170.0").is_empty());
+    assert_eq!(
+        blockers_for("skyrimspecialedition", &["1.4.15.0-VR"], "1.6.1170.0"),
+        ["game_version_mismatch"]
+    );
 }

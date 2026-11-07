@@ -91,7 +91,30 @@ pub struct CollectionPlan {
     pub warnings: Vec<Diagnostic>,
 }
 
+/// Whether an authored game version names the runtime read from the game
+/// executable. A VR edition's executable carries a plain version while
+/// collections write it with the edition suffix ("1.4.15.0-VR").
+fn declared_version_matches(
+    declared: &str,
+    actual: &str,
+    game: Option<&super::games::GameProfile>,
+) -> bool {
+    declared == actual
+        || game.and_then(|g| g.variant.as_ref()).is_some_and(|v| {
+            declared.trim().to_ascii_lowercase() == format!("{actual}{}", v.version_suffix)
+        })
+}
+
 impl CollectionPlan {
+    /// The game adapter for this plan, derived from the stored domain and game
+    /// versions so the plan format is unchanged.
+    pub fn profile(&self) -> Option<&'static super::games::GameProfile> {
+        super::games::resolve(&self.domain, &self.game_versions)
+    }
+    pub fn require_profile(&self) -> Result<&'static super::games::GameProfile> {
+        super::games::require_for(&self.domain, &self.game_versions)
+    }
+
     pub fn build(package: &CollectionPackage, options: &PlanOptions) -> Result<Self> {
         let collection = &package.collection;
         let mut plan = Self {
@@ -133,7 +156,7 @@ impl CollectionPlan {
         if package.manifest_only {
             plan.block("manifest_only", None, "Supply the full collection package or extracted package directory to retain bundles, patches and tweaks");
         }
-        let game = super::games::profile(&plan.domain);
+        let game = plan.profile();
         if game.is_none() {
             plan.block(
                 "unsupported_game",
@@ -161,7 +184,11 @@ impl CollectionPlan {
         }
         if !plan.game_versions.is_empty() {
             match &options.game_version {
-                Some(version) if plan.game_versions.contains(version) => {}
+                Some(version)
+                    if plan
+                        .game_versions
+                        .iter()
+                        .any(|declared| declared_version_matches(declared, version, game)) => {}
                 Some(_) => plan.block(
                     "game_version_mismatch",
                     None,
@@ -215,7 +242,7 @@ impl CollectionPlan {
                         {
                             plan.launcher_name = Some(name.into());
                             plan.required_capabilities.insert(
-                                if plan.domain == "skyrimspecialedition" {
+                                if game.is_some_and(|g| g.domain == "skyrimspecialedition") {
                                     "skse_launcher"
                                 } else {
                                     "game_extender_launcher"
@@ -427,7 +454,7 @@ impl CollectionPlan {
             let signature = digest_bytes(&serde_json::to_vec(&json!({
                 "member": member, "artifact": artifact_id, "patches": patch_digests,
                 "schema": options.schema_id, "engine": env!("CARGO_PKG_VERSION"),
-                "plan_schema": PLAN_SCHEMA_VERSION, "routing": if plan.domain == "skyrimspecialedition" { "logical-v4-basic-prefix".to_owned() } else { format!("logical-v5-game-profile:{}", plan.domain) }, "game_version": options.game_version
+                "plan_schema": PLAN_SCHEMA_VERSION, "routing": match plan.profile() { Some(g) if g.domain == "skyrimspecialedition" => "logical-v4-basic-prefix".to_owned(), Some(g) => format!("logical-v5-game-profile:{}", g.domain), None => format!("logical-v5-game-profile:{}", plan.domain) }, "game_version": options.game_version
             }))?);
             plan.members.push(MemberPlan {
                 id,

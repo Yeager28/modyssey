@@ -16,12 +16,16 @@ mod collections_gui;
 mod downloaders;
 mod fluorine;
 mod game_finder;
+mod game_index;
 mod hash;
 mod installer;
 mod modlist;
+mod momw_gui;
 mod octodiff;
 mod paths;
+mod secrets;
 mod settings;
+mod steam;
 mod textures;
 
 use anyhow::{Context, Result};
@@ -98,6 +102,12 @@ struct Cli {
 enum Commands {
     /// Inspect and plan Nexus Collections without loading account credentials.
     Collection(clf3::collection::cli::CollectionArgs),
+    /// Plan Modding-OpenMW (OpenMW) mod lists from modding-openmw.com.
+    Momw(clf3::momw::cli::MomwArgs),
+    /// Grow and query the index of known game-file hashes and versions.
+    GameIndex(clf3::game_index::cli::GameIndexArgs),
+    /// Log in to Steam and keep the login saved between runs.
+    Steam(clf3::steam::cli::SteamArgs),
     /// Browse available Wabbajack modlists
     Browser,
 
@@ -331,6 +341,18 @@ async fn main() -> Result<()> {
     if let Some(Commands::Collection(args)) = &cli.command {
         return clf3::collection::cli::run(args).await;
     }
+    // MOMW list planning only reads public site data; same credential-free path.
+    if let Some(Commands::Momw(args)) = &cli.command {
+        return clf3::momw::cli::run(args).await;
+    }
+    // The game index is local data only; no credentials or settings needed.
+    if let Some(Commands::GameIndex(args)) = &cli.command {
+        return clf3::game_index::cli::run(args).await;
+    }
+    // Steam login manages only its own saved-login file.
+    if let Some(Commands::Steam(args)) = &cli.command {
+        return clf3::steam::cli::run(args).await;
+    }
 
     // Set up file logging (always enabled) next to the executable
     let log_dir = std::env::current_exe()
@@ -514,6 +536,9 @@ async fn main() -> Result<()> {
 
     match command {
         Commands::Collection(_) => unreachable!("collection commands return before initialization"),
+        Commands::Momw(_) => unreachable!("momw commands return before initialization"),
+        Commands::GameIndex(_) => unreachable!("game-index commands return before initialization"),
+        Commands::Steam(_) => unreachable!("steam commands return before initialization"),
         Commands::Browser => {
             if let Err(e) = browser_gui::launch_browser() {
                 eprintln!("Browser GUI error: {}", e);

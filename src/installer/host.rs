@@ -17,8 +17,13 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use super::progress_json::JsonEventWriter;
+use crate::downloaders::nexus_files::NexusFileListing;
 
 pub const HOST_PROTOCOL_VERSION: u32 = 1;
+
+/// Optional host feature, announced in `hello_ack.features`: the host answers
+/// `nexus_files_required` with the authenticated Nexus `files.json` of a mod.
+pub const FEATURE_NEXUS_FILE_LIST: &str = "nexus_file_list_v1";
 
 #[derive(Debug, Clone)]
 pub struct HostedNexusRequest {
@@ -42,6 +47,10 @@ pub struct HostedManualRequest {
 pub trait HostedDownloadProvider: Send + Sync {
     async fn resolve_nexus(&self, request: HostedNexusRequest) -> Result<Vec<String>>;
     async fn resolve_manual(&self, request: HostedManualRequest) -> Result<PathBuf>;
+    /// The files of a Nexus mod. Hosts that cannot do this keep the default.
+    async fn list_nexus_files(&self, _domain: &str, _mod_id: u64) -> Result<NexusFileListing> {
+        bail!("The host cannot list Nexus files; update Fluorine")
+    }
     fn cancellation_token(&self) -> CancellationToken;
 }
 
@@ -49,6 +58,7 @@ pub trait HostedDownloadProvider: Send + Sync {
 enum HostResolution {
     Urls(Vec<String>),
     LocalPath(PathBuf),
+    Files(NexusFileListing),
 }
 
 type PendingSender = oneshot::Sender<Result<HostResolution, String>>;
@@ -58,6 +68,7 @@ pub struct StdioHost {
     pending: Mutex<HashMap<String, PendingSender>>,
     ready: Notify,
     ready_protocol: Mutex<Option<u32>>,
+    features: Mutex<Vec<String>>,
     cancellation: CancellationToken,
 }
 
@@ -68,6 +79,7 @@ impl StdioHost {
             pending: Mutex::new(HashMap::new()),
             ready: Notify::new(),
             ready_protocol: Mutex::new(None),
+            features: Mutex::new(Vec::new()),
             cancellation: CancellationToken::new(),
         });
 
@@ -147,7 +159,11 @@ impl StdioHost {
                 continue;
             }
             match serde_json::from_str::<HostCommand>(&line) {
-                Ok(HostCommand::HelloAck { protocol_version }) => {
+                Ok(HostCommand::HelloAck {
+                    protocol_version,
+                    features,
+                }) => {
+                    *self.features.lock().expect("features lock") = features;
                     *self.ready_protocol.lock().expect("ready protocol lock") =
                         Some(protocol_version);
                     self.ready.notify_one();
@@ -159,6 +175,19 @@ impl StdioHost {
                     self.complete(
                         &request_id,
                         Ok(HostResolution::LocalPath(PathBuf::from(path))),
+                    );
+                }
+                Ok(HostCommand::NexusFilesResult {
+                    request_id,
+                    files,
+                    file_updates,
+                }) => {
+                    self.complete(
+                        &request_id,
+                        Ok(HostResolution::Files(NexusFileListing {
+                            files,
+                            file_updates,
+                        })),
                     );
                 }
                 Ok(HostCommand::AuthorizationFailed { request_id, error }) => {
@@ -229,6 +258,35 @@ impl HostedDownloadProvider for StdioHost {
             HostResolution::Urls(urls) if !urls.is_empty() => Ok(urls),
             HostResolution::Urls(_) => bail!("Host returned no Nexus download URLs"),
             HostResolution::LocalPath(_) => bail!("Host returned a file for a Nexus URL request"),
+            HostResolution::Files(_) => bail!("Host returned a file list for a Nexus URL request"),
+        }
+    }
+
+    async fn list_nexus_files(&self, domain: &str, mod_id: u64) -> Result<NexusFileListing> {
+        if !self
+            .features
+            .lock()
+            .expect("features lock")
+            .iter()
+            .any(|f| f == FEATURE_NEXUS_FILE_LIST)
+        {
+            bail!("This Fluorine cannot list Nexus files; update Fluorine to install OpenMW lists");
+        }
+        let request_id = Uuid::new_v4().to_string();
+        let (sender, receiver) = oneshot::channel();
+        self.pending
+            .lock()
+            .expect("pending request lock")
+            .insert(request_id.clone(), sender);
+        self.writer.emit_value(&json!({
+            "type": "nexus_files_required",
+            "request_id": request_id,
+            "domain": domain,
+            "mod_id": mod_id
+        }));
+        match self.wait_for_resolution(&request_id, receiver).await? {
+            HostResolution::Files(listing) => Ok(listing),
+            _ => bail!("Host answered a Nexus file list request with something else"),
         }
     }
 
@@ -250,7 +308,9 @@ impl HostedDownloadProvider for StdioHost {
         }));
         match self.wait_for_resolution(&request_id, receiver).await? {
             HostResolution::LocalPath(path) => Ok(path),
-            HostResolution::Urls(_) => bail!("Host returned URLs for a manual file request"),
+            HostResolution::Urls(_) | HostResolution::Files(_) => {
+                bail!("Host returned URLs for a manual file request")
+            }
         }
     }
 
@@ -264,6 +324,16 @@ impl HostedDownloadProvider for StdioHost {
 enum HostCommand {
     HelloAck {
         protocol_version: u32,
+        /// Optional capabilities of the host, e.g. [`FEATURE_NEXUS_FILE_LIST`].
+        #[serde(default)]
+        features: Vec<String>,
+    },
+    NexusFilesResult {
+        request_id: String,
+        #[serde(default)]
+        files: Vec<crate::downloaders::nexus_files::NexusFile>,
+        #[serde(default)]
+        file_updates: Vec<crate::downloaders::nexus_files::NexusFileUpdate>,
     },
     DownloadAuthorizationResult {
         request_id: String,
@@ -291,9 +361,36 @@ mod tests {
         assert!(matches!(
             ack,
             HostCommand::HelloAck {
-                protocol_version: HOST_PROTOCOL_VERSION
+                protocol_version: HOST_PROTOCOL_VERSION,
+                ..
             }
         ));
+    }
+
+    #[test]
+    fn hello_ack_features_and_file_lists_parse() {
+        let ack: HostCommand = serde_json::from_str(
+            r#"{"type":"hello_ack","protocol_version":1,"features":["nexus_file_list_v1"]}"#,
+        )
+        .unwrap();
+        let HostCommand::HelloAck { features, .. } = ack else {
+            panic!("not a hello_ack")
+        };
+        assert_eq!(features, [FEATURE_NEXUS_FILE_LIST]);
+
+        let files: HostCommand = serde_json::from_str(
+            r#"{"type":"nexus_files_result","request_id":"r","files":[{"file_id":7,"name":"A","file_name":"a.7z","category_name":"MAIN","uploaded_timestamp":1,"unknown_field":true}],"file_updates":[{"old_file_id":1,"new_file_id":7,"old_file_name":"x"}]}"#,
+        )
+        .unwrap();
+        let HostCommand::NexusFilesResult {
+            files,
+            file_updates,
+            ..
+        } = files
+        else {
+            panic!("not a result")
+        };
+        assert_eq!((files[0].file_id, file_updates[0].new_file_id), (7, 7));
     }
 
     #[test]
@@ -308,6 +405,7 @@ mod tests {
             pending: Mutex::new(HashMap::new()),
             ready: Notify::new(),
             ready_protocol: Mutex::new(None),
+            features: Mutex::new(Vec::new()),
             cancellation: CancellationToken::new(),
         };
         host.cancellation.cancel();

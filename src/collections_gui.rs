@@ -141,7 +141,10 @@ impl CollectionsView {
         for event in incoming {
             match event {
                 Event::Prepared(prepared) => {
-                    self.selected_game = prepared.plan.domain.clone();
+                    self.selected_game = prepared
+                        .plan
+                        .profile()
+                        .map_or_else(|| prepared.plan.domain.clone(), |g| g.domain.into());
                     self.inputs = prepared.inputs.clone();
                     self.recent = Some(prepared.job.clone());
                     self.completed = read_json::<PublicationReport>(
@@ -256,7 +259,13 @@ impl CollectionsView {
     fn load(&mut self, ctx: &egui::Context, key: &str) {
         if let Ok(locator) = clf3::collection::url::parse_collection_url(self.inputs.source.trim())
         {
-            self.select_game(&locator.domain);
+            // A VR edition shares its base game's Nexus domain, so keep a game
+            // the user chose when it is filed under this collection's domain.
+            let chosen_matches = clf3::collection::games::profile(&self.selected_game)
+                .is_some_and(|g| g.nexus_domain() == locator.domain);
+            if !chosen_matches {
+                self.select_game(&locator.domain);
+            }
         }
         let mut inputs = self.inputs.clone();
         let previous = self.prepared.clone();

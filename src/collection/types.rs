@@ -60,6 +60,11 @@ impl Collection {
             &self.info.domain_name
         }
     }
+    /// The game adapter this collection needs; a VR collection resolves to the
+    /// VR adapter even though Nexus files it under the base game's domain.
+    pub fn require_profile(&self) -> anyhow::Result<&'static super::games::GameProfile> {
+        super::games::require_for(self.domain(), &self.info.game_versions)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

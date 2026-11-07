@@ -19,8 +19,19 @@ impl Masterlist {
     }
 }
 
+/// A game Nexus files under another game's domain: VR editions have no domain
+/// of their own, so a collection names them only through its game versions
+/// (for example "1.4.15.0-VR").
+#[derive(Debug)]
+pub struct Variant {
+    pub nexus_domain: &'static str,
+    /// Lower-case suffix every listed game version must carry.
+    pub version_suffix: &'static str,
+}
+
 #[derive(Debug)]
 pub struct GameProfile {
+    /// Unique adapter key. For a variant this is not a Nexus domain.
     pub domain: &'static str,
     pub name: &'static str,
     pub executable: &'static str,
@@ -41,9 +52,15 @@ pub struct GameProfile {
     pub light_plugins: bool,
     pub plugin_header_size: usize,
     pub experimental: bool,
+    pub variant: Option<Variant>,
 }
 
 impl GameProfile {
+    /// The domain Nexus uses for this game's collections and mods.
+    pub fn nexus_domain(&self) -> &'static str {
+        self.variant.as_ref().map_or(self.domain, |v| v.nexus_domain)
+    }
+
     pub fn manager_name(&self) -> &'static str {
         if self.domain == "newvegas" {
             "New Vegas"
@@ -175,6 +192,7 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: true,
         plugin_header_size: 24,
         experimental: false,
+        variant: None,
     },
     GameProfile {
         domain: "fallout4",
@@ -210,6 +228,7 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: true,
         plugin_header_size: 24,
         experimental: true,
+        variant: None,
     },
     GameProfile {
         domain: "newvegas",
@@ -247,6 +266,7 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: false,
         plugin_header_size: 24,
         experimental: true,
+        variant: None,
     },
     GameProfile {
         domain: "fallout3",
@@ -280,6 +300,7 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: false,
         plugin_header_size: 24,
         experimental: true,
+        variant: None,
     },
     GameProfile {
         domain: "oblivion",
@@ -306,6 +327,7 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: false,
         plugin_header_size: 20,
         experimental: true,
+        variant: None,
     },
     GameProfile {
         domain: "skyrim",
@@ -338,11 +360,172 @@ pub static PROFILES: &[GameProfile] = &[
         light_plugins: false,
         plugin_header_size: 24,
         experimental: true,
+        variant: None,
+    },
+    GameProfile {
+        domain: "enderal",
+        name: "Enderal",
+        // The launcher is the one executable every install has; it starts
+        // SKSE itself, and the SKSE loader is detected separately.
+        executable: "Enderal Launcher.exe",
+        steam_ids: &["933480"],
+        my_games: "Enderal",
+        ini_files: &["Enderal.ini", "EnderalPrefs.ini"],
+        default_ini: "Enderal_Default.ini",
+        extender: "skse_loader.exe",
+        extender_name: "SKSE",
+        extender_prefix: "skse_",
+        extender_directory: "skse",
+        base_plugins: &["Skyrim.esm", "Update.esm", "Enderal - Forgotten Stories.esm"],
+        creation_club_file: None,
+        loot: libloot::GameType::Skyrim,
+        masterlist: Masterlist {
+            repository: "enderal",
+            commit: "63b9f2d17e0a82f3b375345f70fa1f93d4b33ab1",
+            sha256: "e692331dea4f852b79a6456429ad9e5ac22627b926da7e7243e4577e149d7e29",
+        },
+        asterisk_plugins: false,
+        timestamp_order: false,
+        light_plugins: false,
+        plugin_header_size: 24,
+        experimental: true,
+        variant: None,
+    },
+    GameProfile {
+        domain: "enderalspecialedition",
+        name: "Enderal Special Edition",
+        executable: "Enderal Launcher.exe",
+        steam_ids: &["976620"],
+        my_games: "Enderal Special Edition",
+        ini_files: &["Enderal.ini", "EnderalPrefs.ini"],
+        default_ini: "Enderal_Default.ini",
+        extender: "skse64_loader.exe",
+        extender_name: "SKSE",
+        extender_prefix: "skse64_",
+        extender_directory: "skse",
+        // The last two are primary for users but the game does not load them
+        // by itself, so they are written to the plugin list when present.
+        base_plugins: &[
+            "Skyrim.esm",
+            "Update.esm",
+            "Dawnguard.esm",
+            "HearthFires.esm",
+            "Dragonborn.esm",
+            "Enderal - Forgotten Stories.esm",
+            "SkyUI_SE.esp",
+        ],
+        creation_club_file: None,
+        loot: libloot::GameType::SkyrimSE,
+        masterlist: Masterlist {
+            repository: "enderal",
+            commit: "63b9f2d17e0a82f3b375345f70fa1f93d4b33ab1",
+            sha256: "e692331dea4f852b79a6456429ad9e5ac22627b926da7e7243e4577e149d7e29",
+        },
+        asterisk_plugins: true,
+        timestamp_order: false,
+        light_plugins: true,
+        plugin_header_size: 24,
+        experimental: true,
+        variant: None,
+    },
+    GameProfile {
+        domain: "skyrimvr",
+        name: "Skyrim VR",
+        executable: "SkyrimVR.exe",
+        steam_ids: &["611670"],
+        my_games: "Skyrim VR",
+        ini_files: &["SkyrimVR.ini", "SkyrimPrefs.ini"],
+        // A fresh VR install has no profile INI yet; MO2 seeds it from the
+        // game folder's Skyrim.ini.
+        default_ini: "Skyrim.ini",
+        extender: "sksevr_loader.exe",
+        extender_name: "SKSE VR",
+        extender_prefix: "sksevr_",
+        extender_directory: "skse",
+        base_plugins: &[
+            "Skyrim.esm",
+            "Update.esm",
+            "Dawnguard.esm",
+            "HearthFires.esm",
+            "Dragonborn.esm",
+            "SkyrimVR.esm",
+        ],
+        creation_club_file: Some("Skyrim.ccc"),
+        loot: libloot::GameType::SkyrimVR,
+        masterlist: Masterlist {
+            repository: "skyrimvr",
+            commit: "f4840b450a39494f3c97489157e8ce8ac42d5686",
+            sha256: "8282487953a476fdf628710154db908468dc16afa005cc5fb4cf3ab69695d2dc",
+        },
+        asterisk_plugins: true,
+        timestamp_order: false,
+        // Light plugins need the ESL support SKSE VR plugin, which VR
+        // collections install themselves.
+        light_plugins: true,
+        plugin_header_size: 24,
+        experimental: true,
+        variant: Some(Variant {
+            nexus_domain: "skyrimspecialedition",
+            version_suffix: "-vr",
+        }),
+    },
+    GameProfile {
+        domain: "fallout4vr",
+        name: "Fallout 4 VR",
+        executable: "Fallout4VR.exe",
+        steam_ids: &["611660"],
+        my_games: "Fallout4VR",
+        ini_files: &["Fallout4.ini", "Fallout4Prefs.ini", "Fallout4Custom.ini"],
+        default_ini: "Fallout4.ini",
+        extender: "f4sevr_loader.exe",
+        extender_name: "F4SE VR",
+        extender_prefix: "f4sevr_",
+        extender_directory: "f4se",
+        base_plugins: &["Fallout4.esm", "Fallout4_VR.esm"],
+        creation_club_file: Some("Fallout4.ccc"),
+        loot: libloot::GameType::Fallout4VR,
+        masterlist: Masterlist {
+            repository: "fallout4vr",
+            commit: "1a727c25d59c5e99a14210f6ec2ca1e2cf701fc4",
+            sha256: "408b0339b5e3017ff9ec54719b8660ed76756bec0d8a617e9c8bee25d4017630",
+        },
+        asterisk_plugins: true,
+        timestamp_order: false,
+        light_plugins: true,
+        plugin_header_size: 24,
+        experimental: true,
+        variant: Some(Variant {
+            nexus_domain: "fallout4",
+            version_suffix: "-vr",
+        }),
     },
 ];
 
 pub fn profile(domain: &str) -> Option<&'static GameProfile> {
     PROFILES.iter().find(|g| g.domain == domain)
+}
+/// The adapter a collection needs. A variant applies only when the collection
+/// lists nothing but that variant's game versions; one that also lists the
+/// base game's versions is installed as the base game.
+pub fn resolve(domain: &str, game_versions: &[String]) -> Option<&'static GameProfile> {
+    if !game_versions.is_empty() {
+        let variant = PROFILES.iter().find(|p| {
+            p.variant.as_ref().is_some_and(|v| {
+                v.nexus_domain == domain
+                    && game_versions
+                        .iter()
+                        .all(|g| g.trim().to_ascii_lowercase().ends_with(v.version_suffix))
+            })
+        });
+        if variant.is_some() {
+            return variant;
+        }
+    }
+    profile(domain)
+}
+pub fn require_for(domain: &str, game_versions: &[String]) -> Result<&'static GameProfile> {
+    resolve(domain, game_versions)
+        .ok_or_else(|| anyhow::anyhow!("{}: {}", domain, unsupported_reason(domain)))
 }
 pub fn require(domain: &str) -> Result<&'static GameProfile> {
     profile(domain).ok_or_else(|| anyhow::anyhow!("{}: {}", domain, unsupported_reason(domain)))
@@ -352,12 +535,6 @@ pub fn require(domain: &str) -> Result<&'static GameProfile> {
 /// installation until deployment and activation have conformance coverage.
 pub fn unsupported_reason(domain: &str) -> &'static str {
     match domain {
-        "skyrimvr" | "fallout4vr" => {
-            "VR runtime and light-plugin compatibility need a dedicated game profile"
-        }
-        "enderal" | "enderalspecialedition" => {
-            "Enderal needs its own runtime, game detection and masterlist profile"
-        }
         "morrowind" => {
             "Morrowind needs TES3 records, Data Files routing and Morrowind.ini activation"
         }

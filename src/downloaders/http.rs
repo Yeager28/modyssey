@@ -215,13 +215,16 @@ pub async fn download_file_with_callback(
             Ok(resp) => resp,
             Err(e) => {
                 let kind = reqwest_error_kind(&e);
+                // Keep DNS/TLS/socket causes, but omit signed URLs and tokens.
+                let error = anyhow::Error::new(e.without_url());
                 if attempts < MAX_RESUME_RETRIES {
                     attempts += 1;
                     let delay = retry_delay(attempts);
                     warn!(
-                        "Request to {} failed ({}) (retry {}/{} in {:?})",
+                        "Request to {} failed ({}): {:#} (retry {}/{} in {:?})",
                         safe_url_origin(url),
                         kind,
+                        error,
                         attempts,
                         MAX_RESUME_RETRIES,
                         delay
@@ -229,12 +232,14 @@ pub async fn download_file_with_callback(
                     tokio::time::sleep(delay).await;
                     continue;
                 }
-                bail!(
-                    "Connection to {} failed after {} retries ({})",
-                    safe_url_origin(url),
-                    attempts,
-                    kind
-                );
+                return Err(error).with_context(|| {
+                    format!(
+                        "Connection to {} failed after {} retries ({})",
+                        safe_url_origin(url),
+                        attempts,
+                        kind
+                    )
+                });
             }
         };
 
@@ -370,9 +375,10 @@ pub async fn download_file_with_callback(
                   Ok(chunk) => chunk,
                   Err(error) => {
                     let kind = reqwest_error_kind(&error);
-                    warn!("HTTP response body interrupted from {} ({})",
-                          safe_url_origin(url), kind);
-                    interrupted = Some(format!("response body interrupted ({})", kind));
+                    let error = anyhow::Error::new(error.without_url());
+                    warn!("HTTP response body interrupted from {} ({}): {:#}",
+                          safe_url_origin(url), kind, error);
+                    interrupted = Some(format!("response body interrupted ({}): {:#}", kind, error));
                     break;
                   }
                 };
@@ -662,6 +668,32 @@ mod tests {
             safe_url_origin("https://user:secret@example.test/files/archive?token=signed"),
             "https://example.test"
         );
+    }
+
+    #[tokio::test]
+    async fn connection_failure_keeps_socket_cause_without_signed_url() {
+        // A bound, non-listening TCP socket deterministically refuses connects.
+        let socket = tokio::net::TcpSocket::new_v4().unwrap();
+        socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let url = format!(
+            "http://{}/private-archive?token=secret-token",
+            socket.local_addr().unwrap()
+        );
+        let client = HttpClient {
+            client: reqwest::Client::builder().no_proxy().build().unwrap(),
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let error = download_file(&client, &url, &dir.path().join("archive"), Some(4))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            source_io_error_kind(error.as_ref()),
+            Some(ErrorKind::ConnectionRefused)
+        );
+        let details = format!("{error:#}");
+        assert!(details.contains("failed after 8 retries"), "{details}");
+        assert!(!details.contains("private-archive"), "{details}");
+        assert!(!details.contains("secret-token"), "{details}");
     }
 
     #[test]

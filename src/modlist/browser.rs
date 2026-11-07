@@ -219,7 +219,9 @@ impl ModlistBrowser {
             .get(REPOSITORIES_URL)
             .send()
             .await
-            .context("Failed to fetch repositories.json")?;
+            .context("Failed to fetch repositories.json")?
+            .error_for_status()
+            .context("Wabbajack repositories index returned an error")?;
 
         let repos: HashMap<String, String> = response
             .json()
@@ -263,7 +265,11 @@ impl ModlistBrowser {
                     );
                 }
                 Err(e) => {
-                    warn!("Failed to fetch {}: {}", repo_name_clone, e);
+                    warn!(
+                        "Failed to fetch {}: {:#}",
+                        repo_name_clone,
+                        anyhow::Error::new(e)
+                    );
                 }
             }
         }
@@ -293,7 +299,9 @@ impl ModlistBrowser {
             .get(FEATURED_URL)
             .send()
             .await
-            .context("Failed to fetch featured_lists.json")?;
+            .context("Failed to fetch featured_lists.json")?
+            .error_for_status()
+            .context("Wabbajack featured lists returned an error")?;
 
         let featured: Vec<String> = response
             .json()

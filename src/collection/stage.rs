@@ -133,10 +133,10 @@ pub fn stage_with_progress(
             context.active.insert(plugin.name.to_lowercase());
         }
     }
-    let game = super::games::require(&plan.domain)?;
+    let game = plan.require_profile()?;
     // Preserve the established SE replay context. Other adapters only assume
     // the game's main master; DLC availability comes from authored plugins.
-    let base = if game.domain == "skyrimspecialedition" {
+    let base = if matches!(game.domain, "skyrimspecialedition" | "skyrimvr") {
         game.base_plugins
     } else {
         &game.base_plugins[..1]
@@ -404,7 +404,7 @@ fn reproduce_member(
     }) {
         bail!("Installer interaction required: scripted installer");
     }
-    raw_layout(files, super::games::require(&plan.domain)?)
+    raw_layout(files, plan.require_profile()?)
 }
 
 fn raw_layout(
@@ -749,8 +749,16 @@ pub(crate) fn lock_job(root: &Path) -> Result<File> {
     #[cfg(unix)]
     {
         use std::os::fd::AsRawFd;
-        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-            bail!("Another process owns this staging job");
+        // A lock belongs to the open file, so a child forked by another thread
+        // keeps a just-released lock until its exec closes the inherited
+        // descriptor. Wait out that window; a real second owner still fails.
+        let mut attempts = 0;
+        while unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+            attempts += 1;
+            if attempts > 40 {
+                bail!("Another process owns this staging job");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
     }
     Ok(file)

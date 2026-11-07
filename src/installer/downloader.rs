@@ -1688,6 +1688,14 @@ fn check_manual(
 ) -> Option<ManualDownloadInfo> {
     match state {
         DownloadState::Manual(manual_state) => {
+            // Some modlists mark direct GitHub archives/assets as manual even
+            // though no browser interaction is needed. Keep authored prompts
+            // manual so any special download instructions are still shown.
+            if manual_state.prompt.trim().is_empty()
+                && is_github_direct_download(&manual_state.url)
+            {
+                return None;
+            }
             // ModDB "manual" links can often be resolved automatically.
             if is_moddb_url(&manual_state.url) {
                 return None;
@@ -1740,6 +1748,33 @@ async fn init_loverslab(config: &InstallConfig) -> Option<LoversLabDownloader> {
 
 fn is_loverslab_url(url: &str) -> bool {
     crate::downloaders::loverslab::is_loverslab_url(url)
+}
+
+/// Recognize file endpoints, not repository, release, or login pages.
+fn is_github_direct_download(input: &str) -> bool {
+    let Ok(url) = reqwest::Url::parse(input) else {
+        return false;
+    };
+    if url.scheme() != "https"
+        || url.host_str() != Some("github.com")
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.port().is_some()
+    {
+        return false;
+    }
+    let segments: Vec<_> = url.path_segments().into_iter().flatten().collect();
+    if segments.len() < 4 || segments.iter().any(|part| part.is_empty()) {
+        return false;
+    }
+    match segments[2] {
+        "archive" => url.path().ends_with(".zip") || url.path().ends_with(".tar.gz"),
+        "releases" if segments.len() == 6 => {
+            segments[3] == "download"
+                || (segments[3] == "latest" && segments[4] == "download")
+        }
+        _ => false,
+    }
 }
 
 fn is_mediafire_url(url: &str) -> bool {
@@ -2551,7 +2586,19 @@ async fn download_archive_inner(
                     .await?;
                 return Ok(((), None));
             }
-            if is_moddb_url(&manual_state.url) {
+            if manual_state.prompt.trim().is_empty()
+                && is_github_direct_download(&manual_state.url)
+            {
+                download_file_with_callback(
+                    &ctx.http,
+                    &manual_state.url,
+                    output_path,
+                    Some(archive.size as u64),
+                    callback_ref,
+                )
+                .await?;
+                Ok(((), None))
+            } else if is_moddb_url(&manual_state.url) {
                 let resolved_url = resolve_moddb_download_url(&ctx.http, &manual_state.url)
                     .await
                     .with_context(|| {
@@ -2590,11 +2637,12 @@ async fn download_archive_inner(
                     handle.set_message(&format!("LL: {}", truncate_name(&archive.name, 35)));
 
                     let result = ll
-                        .download_with_callback(
+                        .download_with_expected_size(
                             &manual_state.url,
                             &archive.name,
                             output_path,
                             callback_ref,
+                            u64::try_from(archive.size).ok(),
                         )
                         .await;
 
@@ -2991,6 +3039,64 @@ async fn download_non_nexus_files(
 mod tests {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn github_file_endpoints_are_automated_but_pages_and_spoofed_hosts_are_not() {
+        for url in [
+            "https://github.com/eeveelo/SexLab/archive/refs/tags/1.66b.zip",
+            "https://github.com/owner/repo/archive/refs/heads/main.zip",
+            "https://github.com/owner/repo/archive/v1.0.tar.gz",
+            "https://github.com/owner/repo/releases/download/v1.0/mod.7z",
+            "https://github.com/owner/repo/releases/latest/download/mod.7z",
+        ] {
+            assert!(is_github_direct_download(url), "{url}");
+        }
+        for url in [
+            "https://github.com/owner/repo",
+            "https://github.com/owner/repo/releases/tag/v1.0",
+            "https://github.com/owner/repo/releases/latest",
+            "https://github.com/owner/repo/blob/main/mod.zip",
+            "https://github.com/owner/repo/archive/",
+            "https://github.com/owner/repo/releases/download/v1.0/",
+            "https://github.com.example.com/owner/repo/archive/v1.zip",
+            "https://example.com/github.com/owner/repo/archive/v1.zip",
+            "https://github.com@evil.example/owner/repo/archive/v1.zip",
+            "https://user:secret@github.com/owner/repo/archive/v1.zip",
+            "https://github.com:8443/owner/repo/archive/v1.zip",
+            "http://github.com/owner/repo/archive/v1.zip",
+        ] {
+            assert!(!is_github_direct_download(url), "{url}");
+        }
+    }
+
+    #[test]
+    fn github_manual_archive_without_instructions_bypasses_manual_queue() {
+        let archive = ArchiveInfo {
+            name: "SexLab-1.66b.zip".into(),
+            hash: "YJuABrnJSWs=".into(),
+            size: 108751025,
+            meta: String::new(),
+            state_json: String::new(),
+            download_status: String::new(),
+            extraction_status: String::new(),
+            local_path: None,
+            cached_url: None,
+            url_expires: None,
+        };
+        let manual = |url: &str, prompt: &str| {
+            DownloadState::Manual(crate::modlist::ManualState {
+                url: url.into(),
+                prompt: prompt.into(),
+            })
+        };
+        let url = "https://github.com/eeveelo/SexLab/archive/refs/tags/1.66b.zip";
+        assert!(check_manual(&manual(url, ""), &archive, false).is_none());
+        let prompt = "Follow the author's special download instructions";
+        let required = check_manual(&manual(url, prompt), &archive, false).unwrap();
+        assert_eq!(required.prompt.as_deref(), Some(prompt));
+        let page = manual("https://github.com/eeveelo/SexLab/releases", "");
+        assert!(check_manual(&page, &archive, false).is_some());
+    }
 
     #[test]
     fn unresolved_ll_files_keep_manual_instructions_but_network_errors_do_not() {

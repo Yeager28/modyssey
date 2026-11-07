@@ -136,9 +136,9 @@ def main():
     report['profile_local_saves_and_settings'] = all(profile_settings.getboolean('General', key, fallback=False) for key in ('LocalSaves', 'LocalSettings'))
     plugins = {}
     ordered = []
-    modern = plan['domain'] in ('skyrimspecialedition', 'fallout4')
+    modern = plan['domain'] in ('skyrimspecialedition', 'fallout4', 'enderalspecialedition')
     timestamp_order = plan['domain'] in ('oblivion', 'fallout3', 'newvegas')
-    if plan['domain'] not in ('skyrimspecialedition', 'fallout4', 'oblivion', 'fallout3', 'newvegas', 'skyrim'):
+    if plan['domain'] not in ('skyrimspecialedition', 'fallout4', 'oblivion', 'fallout3', 'newvegas', 'skyrim', 'enderal', 'enderalspecialedition'):
         errors.append('Unsupported game activation format in audit')
     loadorder = [line.casefold() for line in (profile / 'loadorder.txt').read_text().splitlines() if line and not line.startswith('#')]
     for line in (profile / 'plugins.txt').read_text(encoding='cp1252').splitlines():

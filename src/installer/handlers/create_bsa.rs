@@ -9,6 +9,7 @@ use crate::modlist::{BSAFileState, BSAState, CreateBSADirective};
 use anyhow::{Context, Result};
 use ba2::tes4::{ArchiveFlags, ArchiveTypes, Version};
 use rayon::prelude::*;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -41,11 +42,11 @@ fn collect_staged_files(
 ) -> Result<Vec<(String, PathBuf)>> {
     let mut files = Vec::new();
 
-    for entry in WalkDir::new(staging_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-    {
+    for entry in WalkDir::new(staging_dir) {
+        let entry = entry.context("Could not enumerate archive staging files")?;
+        if !entry.file_type().is_file() {
+            continue;
+        }
         let file_path = entry.into_path();
 
         let rel_path = file_path
@@ -61,6 +62,35 @@ fn collect_staged_files(
     }
 
     Ok(files)
+}
+
+fn validate_members<'a>(
+    paths: impl IntoIterator<Item = &'a str>,
+    states: &[BSAFileState],
+) -> Result<()> {
+    let expected: BTreeSet<_> = states
+        .iter()
+        .map(|s| sidecar::normalize_manifest_path(s.path()))
+        .collect();
+    let mut actual = BTreeSet::new();
+    for path in paths {
+        let normalized = sidecar::normalize_manifest_path(path);
+        anyhow::ensure!(
+            actual.insert(normalized),
+            "Duplicate staged archive path: {path}"
+        );
+    }
+    let missing: Vec<_> = expected.difference(&actual).collect();
+    let extra: Vec<_> = actual.difference(&expected).collect();
+    anyhow::ensure!(
+        missing.is_empty() && extra.is_empty(),
+        "Archive membership differs from Wabbajack: {} missing ({:?}), {} unexpected ({:?})",
+        missing.len(),
+        &missing[..missing.len().min(8)],
+        extra.len(),
+        &extra[..extra.len().min(8)]
+    );
+    Ok(())
 }
 
 /// Handle a CreateBSA directive
@@ -114,7 +144,21 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
     };
 
     // Collect staged file paths (no data read yet)
-    let files = collect_staged_files(&staging_dir, &archive_kind)?;
+    let mut files = collect_staged_files(&staging_dir, &archive_kind)?;
+    // DDS cache receipts are not archive members. An explicitly authored file
+    // with the same extension is still retained and checked below.
+    let expected: BTreeSet<_> = directive
+        .file_states
+        .iter()
+        .map(|s| sidecar::normalize_manifest_path(s.path()))
+        .collect();
+    files.retain(|(name, _)| {
+        !name.ends_with(".clf3hash") || expected.contains(&sidecar::normalize_manifest_path(name))
+    });
+    validate_members(
+        files.iter().map(|(name, _)| name.as_str()),
+        &directive.file_states,
+    )?;
 
     if files.is_empty() {
         anyhow::bail!(
@@ -126,6 +170,21 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
     // Write the archive
     let output_path = ctx.resolve_output_path(&directive.to);
     ctx.dir_cache.ensure_parent_dirs(&output_path)?;
+    let temporary = tempfile::Builder::new()
+        .prefix(".clf3-build-")
+        .suffix(&format!(
+            ".{}",
+            output_path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("bsa")
+        ))
+        .tempfile_in(
+            output_path
+                .parent()
+                .context("Archive has no parent directory")?,
+        )?;
+    let build_path = temporary.path();
 
     match archive_kind {
         ArchiveKind::Bsa {
@@ -144,7 +203,7 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
                     builder.add_file(path, disk_path.clone());
                 }
 
-                builder.build(&output_path)
+                builder.build(build_path)
             };
 
             // If it fails with overflow, retry without compression
@@ -164,7 +223,7 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
                         builder.add_file(path, disk_path.clone());
                     }
 
-                    builder.build(&output_path).with_context(|| {
+                    builder.build(build_path).with_context(|| {
                         format!(
                             "Failed to build BSA (uncompressed): {}",
                             output_path.display()
@@ -191,10 +250,20 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
             preserve_ba2_compression(&mut builder, &directive.file_states);
 
             builder
-                .build(&output_path)
+                .build(build_path)
                 .with_context(|| format!("Failed to build BA2: {}", output_path.display()))?;
         }
     }
+
+    let written = crate::bsa::list_archive_files(build_path)?;
+    validate_members(
+        written.iter().map(|f| f.path.as_str()),
+        &directive.file_states,
+    )?;
+    temporary.as_file().sync_all()?;
+    temporary
+        .persist(&output_path)
+        .with_context(|| format!("Could not replace {}", output_path.display()))?;
 
     // Write sidecar hash cache so re-runs can skip this BSA
     if let Err(e) = sidecar::write_sidecar(&output_path, &directive.hash) {
@@ -244,7 +313,10 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
 /// directive's expected hash and the file size hasn't changed (corruption check).
 pub fn output_bsa_valid(ctx: &ProcessContext, directive: &CreateBSADirective) -> bool {
     let output_path = ctx.resolve_output_path(&directive.to);
-    crate::installer::sidecar::sidecar_valid(&output_path, &directive.hash)
+    sidecar::sidecar_valid(&output_path, &directive.hash)
+        && sidecar::read_manifest(&output_path).is_some_and(|manifest| {
+            validate_members(manifest.keys().map(String::as_str), &directive.file_states).is_ok()
+        })
 }
 
 #[cfg(test)]
@@ -252,6 +324,29 @@ mod tests {
     use super::*;
     use ba2::fo4::{Archive, ArchiveKey, FileWriteOptions};
     use ba2::prelude::*;
+
+    #[test]
+    fn archive_requires_all_authored_members_and_no_unexpected_files() {
+        let states: Vec<BSAFileState> = serde_json::from_value(serde_json::json!([
+            {"$type":"BA2FileState, Compression.BSA", "Path":"Textures\\\\A.dds", "Index":0, "Compressed":true},
+            {"$type":"BA2FileState, Compression.BSA", "Path":"Textures/B.dds", "Index":1, "Compressed":true}
+        ])).unwrap();
+        assert!(validate_members(["textures/a.dds", "textures/b.dds"], &states).is_ok());
+        let error = validate_members(["textures/a.dds"], &states)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("1 missing") && error.contains("textures/b.dds"));
+        assert!(validate_members(
+            ["textures/a.dds", "textures/b.dds", "textures/c.dds"],
+            &states
+        )
+        .is_err());
+        assert!(validate_members(
+            ["textures/a.dds", "Textures/A.dds", "textures/b.dds"],
+            &states
+        )
+        .is_err());
+    }
 
     #[test]
     fn ba2_compression_preserves_wabbajack_file_states() -> Result<()> {

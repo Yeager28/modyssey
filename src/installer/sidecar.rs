@@ -16,6 +16,9 @@ use std::path::Path;
 
 const SIDECAR_EXT: &str = "clf3hash";
 const MANIFEST_EXT: &str = "clf3manifest";
+// Older output receipts may describe flattened cubemaps, wrong mip counts,
+// incomplete archives, or the old archive-wide BA2 compression policy.
+const OUTPUT_RECIPE: u32 = 2;
 
 /// Build the sidecar path for a given output file.
 fn sidecar_path(output_path: &Path) -> std::path::PathBuf {
@@ -44,11 +47,14 @@ pub fn sidecar_valid(output_path: &Path, expected_hash: &str) -> bool {
     // Parse hash and size
     let mut stored_hash = None;
     let mut stored_size = None;
+    let mut recipe = None;
     for line in content.lines() {
         if let Some(h) = line.strip_prefix("hash=") {
             stored_hash = Some(h.trim());
         } else if let Some(s) = line.strip_prefix("size=") {
             stored_size = s.trim().parse::<u64>().ok();
+        } else if let Some(value) = line.strip_prefix("recipe=") {
+            recipe = value.trim().parse::<u32>().ok();
         }
     }
 
@@ -57,7 +63,7 @@ pub fn sidecar_valid(output_path: &Path, expected_hash: &str) -> bool {
     };
 
     // Compare directive hash
-    if stored_hash != expected_hash {
+    if stored_hash != expected_hash || recipe != Some(OUTPUT_RECIPE) {
         return false;
     }
 
@@ -74,7 +80,10 @@ pub fn sidecar_valid(output_path: &Path, expected_hash: &str) -> bool {
 pub fn write_sidecar(output_path: &Path, directive_hash: &str) -> std::io::Result<()> {
     let actual_size = fs::metadata(output_path)?.len();
     let sp = sidecar_path(output_path);
-    let content = format!("hash={}\nsize={}\n", directive_hash, actual_size);
+    let content = format!(
+        "hash={}\nsize={}\nrecipe={}\n",
+        directive_hash, actual_size, OUTPUT_RECIPE
+    );
     tracing::info!(
         "Writing sidecar: {} (hash={}, size={})",
         sp.display(),
@@ -181,7 +190,11 @@ fn manifest_path(output_path: &Path) -> std::path::PathBuf {
 /// Converts backslashes to forward slashes and lowercases everything so that
 /// comparisons are consistent regardless of BSA vs BA2 conventions.
 pub fn normalize_manifest_path(path: &str) -> String {
-    path.replace('\\', "/").to_lowercase()
+    path.split(['\\', '/'])
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("/")
+        .to_lowercase()
 }
 
 /// Write a per-file manifest after BSA creation.
@@ -286,6 +299,17 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let output = dir.path().join("nonexistent.dds");
         assert!(!sidecar_valid(&output, "abc123"));
+    }
+
+    #[test]
+    fn old_derived_outputs_are_rebuilt_after_recipe_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("old.dds");
+        fs::write(&output, b"old!").unwrap();
+        fs::write(sidecar_path(&output), "hash=abc123\nsize=4\n").unwrap();
+        assert!(!sidecar_valid(&output, "abc123"));
+        write_sidecar(&output, "abc123").unwrap();
+        assert!(sidecar_valid(&output, "abc123"));
     }
 
     #[test]

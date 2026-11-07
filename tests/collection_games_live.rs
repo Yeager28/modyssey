@@ -19,25 +19,38 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
     let token = Default::default();
     let mut reports = Vec::new();
     for game in games::PROFILES.iter().filter(|g| g.experimental) {
+        // A VR edition has no Nexus domain of its own: search its base game for
+        // collections and keep the first whose game versions resolve to it.
         let page = catalog
             .search(
                 &Search {
-                    game: game.domain.into(),
+                    game: game.nexus_domain().into(),
+                    text: if game.variant.is_some() { "VR".into() } else { String::new() },
                     ..Default::default()
                 },
                 &token,
             )
             .unwrap();
-        let entry = page
+        let candidates = page
             .nodes
             .iter()
-            .find(|e| e.can_review_installation())
-            .expect("Published schema-1 collection");
-        let locator = clf3::collection::url::parse_collection_url(&entry.url().unwrap()).unwrap();
-        let directory = root.join(game.domain);
-        let (path, pinned, schema) = nexus.package(&locator, &directory, &token).unwrap();
-        let package = CollectionPackage::open(&path).unwrap();
-        assert_eq!(package.collection.domain(), game.domain);
+            .filter(|e| e.can_review_installation())
+            .take(if game.variant.is_some() { 10 } else { 1 });
+        let mut found = None;
+        for entry in candidates {
+            let locator =
+                clf3::collection::url::parse_collection_url(&entry.url().unwrap()).unwrap();
+            let directory = root.join(game.domain);
+            let (path, pinned, schema) = nexus.package(&locator, &directory, &token).unwrap();
+            let package = CollectionPackage::open(&path).unwrap();
+            if package.collection.require_profile().unwrap().domain == game.domain {
+                found = Some((directory, pinned, schema, package));
+                break;
+            }
+        }
+        let (directory, pinned, schema, package) =
+            found.expect("Published schema-1 collection for this adapter");
+        assert_eq!(package.collection.domain(), game.nexus_domain());
         // This is a package conformance probe, not an assertion that a locally
         // installed runtime matches. All authored compatibility checks remain.
         let version = package.collection.info.game_versions.first().cloned();

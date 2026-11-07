@@ -19,8 +19,8 @@ pub struct IniTweak {
     pub edits: Vec<IniEdit>,
 }
 
-fn target_name(domain: &str, name: &str) -> Option<&'static str> {
-    super::games::profile(domain)?.ini_target(name)
+fn target_name(game: &super::games::GameProfile, name: &str) -> Option<&'static str> {
+    game.ini_target(name)
 }
 
 fn section(line: &str) -> Option<&str> {
@@ -55,7 +55,8 @@ pub fn load(package: &CollectionPackage) -> Result<Vec<IniTweak>> {
             .get(..suffix.len().saturating_sub(5))
             .filter(|_| suffix.to_ascii_lowercase().ends_with("].ini"))
             .context("INI tweak lacks [Target].ini filename")?;
-        let target = target_name(package.collection.domain(), &format!("{stem}.ini"))
+        let game = package.collection.require_profile()?;
+        let target = target_name(game, &format!("{stem}.ini"))
             .context("Unsupported profile INI target for this game")?;
         let bytes = package.read(&entry.path, MAX_MANIFEST_BYTES)?;
         let text = std::str::from_utf8(&bytes).context("INI tweak is not UTF-8")?;
@@ -135,7 +136,12 @@ fn merge(text: &str, edit: &IniEdit) -> Result<String> {
     Ok(format!("{}\n", lines.join("\n")))
 }
 
-pub fn apply(profile: &Path, records: &Path, tweaks: &[IniTweak], domain: &str) -> Result<usize> {
+pub fn apply(
+    profile: &Path,
+    records: &Path,
+    tweaks: &[IniTweak],
+    game: &super::games::GameProfile,
+) -> Result<usize> {
     if tweaks.is_empty() {
         return Ok(0);
     }
@@ -144,7 +150,7 @@ pub fn apply(profile: &Path, records: &Path, tweaks: &[IniTweak], domain: &str) 
     let mut changes = Vec::new();
     let mut count = 0;
     for tweak in tweaks {
-        let target = target_name(domain, &tweak.target)
+        let target = target_name(game, &tweak.target)
             .context("Unsupported profile INI target for this game")?;
         let path = profile.join(target);
         if path
@@ -210,10 +216,12 @@ mod tests {
 
     #[test]
     fn rejects_non_profile_targets_and_injected_edits() {
-        assert!(target_name("skyrimspecialedition", "../Skyrim.ini").is_none());
-        assert!(target_name("fallout4", "Skyrim.ini").is_none());
+        let skyrim = super::super::games::require("skyrimspecialedition").unwrap();
+        let fallout = super::super::games::require("fallout4").unwrap();
+        assert!(target_name(skyrim, "../Skyrim.ini").is_none());
+        assert!(target_name(fallout, "Skyrim.ini").is_none());
         assert_eq!(
-            target_name("fallout4", "Fallout4Custom.ini"),
+            target_name(fallout, "Fallout4Custom.ini"),
             Some("Fallout4Custom.ini")
         );
         let edit = IniEdit {

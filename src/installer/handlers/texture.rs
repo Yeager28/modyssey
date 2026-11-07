@@ -5,7 +5,7 @@
 
 use crate::installer::processor::ProcessContext;
 use crate::modlist::TransformedTextureDirective;
-use crate::textures::{process_texture_with_fallback, OutputFormat};
+use crate::textures::{process_texture_with_mips, OutputFormat};
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -124,12 +124,13 @@ pub fn handle_transformed_texture(
         }
     };
 
-    // Process the texture with fallback (copies unchanged on decode failure)
-    let (processed, was_fallback) = process_texture_with_fallback(
+    // Preserve the source surface layout and the authored mip count.
+    let processed = process_texture_with_mips(
         source_data,
         directive.image_state.width,
         directive.image_state.height,
         output_format,
+        directive.image_state.mip_levels,
     )
     .with_context(|| {
         format!(
@@ -138,15 +139,8 @@ pub fn handle_transformed_texture(
         )
     })?;
 
-    if was_fallback {
-        tracing::warn!(
-            "Texture copied unchanged (unsupported format): {}",
-            directive.to
-        );
-    }
-
     // Verify size (warning only - texture compression is not perfectly deterministic)
-    if !was_fallback && processed.data.len() as u64 != directive.size {
+    if processed.data.len() as u64 != directive.size {
         tracing::debug!(
             "Texture size differs: expected {} bytes, got {} (format: {})",
             directive.size,

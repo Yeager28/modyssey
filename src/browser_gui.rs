@@ -77,6 +77,7 @@ enum Tab {
     #[default]
     Browser,
     Collections,
+    OpenMw,
     Settings,
 }
 
@@ -91,6 +92,7 @@ enum ValidationStatus {
 
 struct BrowserApp {
     collections: crate::collections_gui::CollectionsView,
+    momw: crate::momw_gui::MomwView,
     shared: Arc<Mutex<SharedState>>,
     /// Search query string.
     search: String,
@@ -233,6 +235,7 @@ impl BrowserApp {
 
         Self {
             collections,
+            momw: Default::default(),
             shared: Arc::new(Mutex::new(SharedState {
                 modlists: Vec::new(),
                 games: Vec::new(),
@@ -295,8 +298,9 @@ impl BrowserApp {
             let mut browser = match ModlistBrowser::new() {
                 Ok(b) => b,
                 Err(e) => {
+                    tracing::warn!("Failed to create modlist browser: {:#}", e);
                     let mut state = shared.lock().expect("lock shared state");
-                    state.fetch_error = Some(format!("Failed to create browser: {}", e));
+                    state.fetch_error = Some(format!("Failed to create browser: {:#}", e));
                     state.fetch_done = true;
                     ctx.request_repaint();
                     return;
@@ -317,8 +321,9 @@ impl BrowserApp {
                         Some(index)
                     }
                     Err(e) => {
+                        tracing::warn!("Mod filters unavailable: {:#}", e);
                         shared.lock().expect("lock shared state").search_index_error =
-                            Some(format!("Mod filters unavailable: {}", e));
+                            Some(format!("Mod filters unavailable: {:#}", e));
                         None
                     }
                 }
@@ -350,8 +355,9 @@ impl BrowserApp {
                     state.fetch_done = true;
                 }
                 Err(e) => {
+                    tracing::warn!("Failed to fetch modlists: {:#}", e);
                     let mut state = shared.lock().expect("lock shared state");
-                    state.fetch_error = Some(format!("Failed to fetch modlists: {}", e));
+                    state.fetch_error = Some(format!("Failed to fetch modlists: {:#}", e));
                     state.fetch_done = true;
                 }
             }
@@ -721,6 +727,7 @@ impl eframe::App for BrowserApp {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.current_tab, Tab::Browser, "Modlist Browser");
                 ui.selectable_value(&mut self.current_tab, Tab::Collections, "Collections");
+                ui.selectable_value(&mut self.current_tab, Tab::OpenMw, "OpenMW");
                 ui.selectable_value(&mut self.current_tab, Tab::Settings, "Settings");
             });
             ui.add_space(2.0);
@@ -733,6 +740,7 @@ impl eframe::App for BrowserApp {
                     self.current_tab = Tab::Settings;
                 }
             }
+            Tab::OpenMw => self.momw.render(ctx),
             Tab::Settings => self.render_settings_tab(ctx),
         }
 

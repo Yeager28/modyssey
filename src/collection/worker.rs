@@ -187,7 +187,7 @@ pub fn recover(
     if verified != report.verified_mod_files {
         bail!("Published file count changed");
     }
-    for name in super::games::require(&journal.plan.domain)?.snapshot_files() {
+    for name in journal.plan.require_profile()?.snapshot_files() {
         let snapshot = output.join(".collection/profile-snapshot").join(name);
         if snapshot.is_file()
             && std::fs::read(snapshot)?
@@ -196,7 +196,7 @@ pub fn recover(
             bail!("Published profile changed since installation");
         }
     }
-    if super::games::require(&journal.plan.domain)?.timestamp_order {
+    if journal.plan.require_profile()?.timestamp_order {
         let timestamps: BTreeMap<String, u64> = read_json(
             &output.join(".collection/plugin-timestamps.json"),
             4 * 1024 * 1024,

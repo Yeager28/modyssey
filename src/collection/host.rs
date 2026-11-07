@@ -159,7 +159,7 @@ pub async fn run_with_options(
                 let result = (|| {
                     let package = CollectionPackage::open(&path)?;
                     if let Some(game_path) = game_path {
-                        let game = super::games::require(package.collection.domain())?;
+                        let game = package.collection.require_profile()?;
                         let exe = super::paths::resolve_file(&game_path, game.executable)?;
                         options.game_version = super::publish::executable_version(&exe)?;
                     }

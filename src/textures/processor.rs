@@ -4,7 +4,9 @@
 //! All encoding goes through GPU (BC7) or CPU (BC4, BC5, BC3, BC1).
 
 use anyhow::{anyhow, Context, Result};
-use directxtex::{ScratchImage, DDS_FLAGS, DXGI_FORMAT, TEX_COMPRESS_FLAGS, TEX_FILTER_FLAGS};
+use directxtex::{
+    ScratchImage, TexMetadata, DDS_FLAGS, DXGI_FORMAT, TEX_COMPRESS_FLAGS, TEX_FILTER_FLAGS,
+};
 use image::{DynamicImage, RgbaImage};
 use image_dds::{ddsfile::Dds, ImageFormat, Mipmaps, Quality, SurfaceRgba8};
 use rayon::prelude::*;
@@ -121,6 +123,8 @@ pub struct TextureJob {
     /// Target dimensions
     pub width: u32,
     pub height: u32,
+    /// Requested mip levels including the base image. Zero means a full chain.
+    pub mip_levels: u32,
     /// Output format
     pub format: OutputFormat,
     /// Optional identifier for tracking
@@ -256,6 +260,107 @@ fn try_reinit_gpu() -> bool {
 fn calculate_mip_levels(width: u32, height: u32) -> u32 {
     let max_dim = width.max(height);
     (max_dim as f32).log2().floor() as u32 + 1
+}
+
+fn requested_mip_levels(width: u32, height: u32, levels: u32) -> Result<u32> {
+    anyhow::ensure!(
+        width > 0 && height > 0,
+        "Texture dimensions must be nonzero"
+    );
+    let maximum = calculate_mip_levels(width, height);
+    anyhow::ensure!(
+        levels <= maximum,
+        "Requested {levels} mip levels, but {width}x{height} allows {maximum}"
+    );
+    Ok(if levels == 0 { maximum } else { levels })
+}
+
+fn texture_metadata(data: &[u8]) -> Result<TexMetadata> {
+    TexMetadata::from_dds(data, DDS_FLAGS::DDS_FLAGS_ALLOW_LARGE_FILES, None)
+        .context("Failed to parse DDS metadata")
+}
+
+fn needs_surface_preservation(data: &[u8]) -> Result<bool> {
+    let metadata = texture_metadata(data)?;
+    Ok(metadata.is_cubemap() || metadata.array_size != 1 || metadata.depth != 1)
+}
+
+/// Complex-image operations retain arrays and cubemaps. Converting through a
+/// single RgbaImage loses that layout, even when its pixels contain all faces.
+fn process_texture_surfaces(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    format: OutputFormat,
+    mip_levels: u32,
+) -> Result<ProcessedTexture> {
+    let levels = requested_mip_levels(width, height, mip_levels)?;
+    let input = ScratchImage::load_dds(
+        data,
+        DDS_FLAGS::DDS_FLAGS_ALLOW_LARGE_FILES | DDS_FLAGS::DDS_FLAGS_EXPAND_LUMINANCE,
+        None,
+        None,
+    )
+    .context("Failed to load DDS surfaces")?;
+    let source = *input.metadata();
+    anyhow::ensure!(
+        !source.is_volumemap(),
+        "Volume DDS resizing is not supported; refusing to flatten it"
+    );
+    let working_format = if format == OutputFormat::BC6H {
+        DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT
+    } else {
+        DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM
+    };
+    let decoded = if source.format.is_compressed() {
+        input.decompress(working_format)?
+    } else if source.format != working_format {
+        input.convert(working_format, TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT, 0.5)?
+    } else {
+        input
+    };
+    // Complex resize emits each item's base level even at unchanged dimensions.
+    let base = decoded.resize(
+        width as usize,
+        height as usize,
+        TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT,
+    )?;
+    let mipped = if levels == 1 {
+        base
+    } else {
+        base.generate_mip_maps(TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT, levels as usize)?
+    };
+    let target = match format {
+        OutputFormat::BC1 => DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM,
+        OutputFormat::BC2 => DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM,
+        OutputFormat::BC3 => DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM,
+        OutputFormat::BC4 => DXGI_FORMAT::DXGI_FORMAT_BC4_UNORM,
+        OutputFormat::BC5 => DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM,
+        OutputFormat::BC6H => DXGI_FORMAT::DXGI_FORMAT_BC6H_UF16,
+        OutputFormat::BC7 => DXGI_FORMAT::DXGI_FORMAT_BC7_UNORM,
+        OutputFormat::Rgba => DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM,
+        OutputFormat::Bgra => DXGI_FORMAT::DXGI_FORMAT_B8G8R8A8_UNORM,
+    };
+    let encoded = if target.is_compressed() {
+        mipped.compress(target, TEX_COMPRESS_FLAGS::TEX_COMPRESS_DEFAULT, 0.5)?
+    } else if mipped.metadata().format != target {
+        mipped.convert(target, TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT, 0.5)?
+    } else {
+        mipped
+    };
+    let result = encoded.metadata();
+    anyhow::ensure!(
+        result.array_size == source.array_size
+            && result.is_cubemap() == source.is_cubemap()
+            && result.mip_levels == levels as usize,
+        "DDS conversion changed surface layout"
+    );
+    Ok(ProcessedTexture {
+        data: encoded.save_dds(DDS_FLAGS::default())?.buffer().to_vec(),
+        width,
+        height,
+        format,
+    })
 }
 
 /// Pad RGBA data with edge replication when dimensions are smaller than the
@@ -401,7 +506,9 @@ fn prepare_bc7_texture(job: &TextureJob) -> Result<PreparedBc7Texture> {
         rgba
     };
 
-    let mip_images = build_bc7_mip_images(resized, job.width, job.height);
+    let levels = requested_mip_levels(job.width, job.height, job.mip_levels)?;
+    let mut mip_images = build_bc7_mip_images(resized, job.width, job.height);
+    mip_images.truncate(levels as usize);
 
     Ok(PreparedBc7Texture {
         target_width: job.width,
@@ -482,9 +589,30 @@ pub fn process_texture(
     target_height: u32,
     output_format: OutputFormat,
 ) -> Result<ProcessedTexture> {
+    process_texture_with_mips(input_data, target_width, target_height, output_format, 0)
+}
+
+/// Transform a DDS without discarding its surface layout or requested mip count.
+pub fn process_texture_with_mips(
+    input_data: &[u8],
+    target_width: u32,
+    target_height: u32,
+    output_format: OutputFormat,
+    mip_levels: u32,
+) -> Result<ProcessedTexture> {
+    let levels = requested_mip_levels(target_width, target_height, mip_levels)?;
+    if needs_surface_preservation(input_data)? {
+        return process_texture_surfaces(
+            input_data,
+            target_width,
+            target_height,
+            output_format,
+            levels,
+        );
+    }
     // BC6H: route entirely through DirectXTex (image_dds can't encode HDR formats)
     if output_format == OutputFormat::BC6H {
-        return process_texture_bc6h_directxtex(input_data, target_width, target_height);
+        return process_texture_bc6h_directxtex(input_data, target_width, target_height, levels);
     }
 
     // Decode to RGBA
@@ -517,7 +645,7 @@ pub fn process_texture(
             if let Ok(mut guard) = encoder_arc.lock() {
                 if let Some(ref mut encoder) = *guard {
                     if !encoder.is_device_lost() {
-                        match process_texture_bc7_gpu(encoder, &resized) {
+                        match process_texture_bc7_gpu_with_mips(encoder, &resized, levels) {
                             Ok(data) => {
                                 return Ok(ProcessedTexture {
                                     data,
@@ -542,7 +670,11 @@ pub fn process_texture(
         .context("No image_dds format for this output format")?;
     let surface = SurfaceRgba8::from_image(&resized);
     let encoded = surface
-        .encode(image_format, Quality::Normal, Mipmaps::GeneratedAutomatic)
+        .encode(
+            image_format,
+            Quality::Normal,
+            Mipmaps::GeneratedExact(levels),
+        )
         .context("Failed to encode texture")?;
 
     // Convert to DDS bytes
@@ -568,6 +700,7 @@ fn process_texture_bc6h_directxtex(
     input_data: &[u8],
     target_width: u32,
     target_height: u32,
+    mip_levels: u32,
 ) -> Result<ProcessedTexture> {
     let flags = DDS_FLAGS::DDS_FLAGS_ALLOW_LARGE_FILES;
     let scratch = ScratchImage::load_dds(input_data, flags, None, None)
@@ -612,9 +745,16 @@ fn process_texture_bc6h_directxtex(
     };
 
     // Generate mipmap chain in RGBA16F
-    let with_mips = resized
-        .generate_mip_maps(TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT, 0)
-        .unwrap_or(resized);
+    let base = resized.resize(
+        target_width as usize,
+        target_height as usize,
+        TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT,
+    )?;
+    let with_mips = if mip_levels == 1 {
+        base
+    } else {
+        base.generate_mip_maps(TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT, mip_levels as usize)?
+    };
 
     // Try GPU encoding first (block_compression crate — instant vs 60s+ CPU)
     if let Some(encoder_arc) = get_gpu_encoder() {
@@ -762,13 +902,26 @@ fn encode_bc6h_gpu(
 
 /// Process texture to BC7 using GPU encoder with edge-replication padding.
 fn process_texture_bc7_gpu(encoder: &mut GpuEncoder, rgba: &RgbaImage) -> Result<Vec<u8>> {
+    process_texture_bc7_gpu_with_mips(
+        encoder,
+        rgba,
+        calculate_mip_levels(rgba.width(), rgba.height()),
+    )
+}
+
+fn process_texture_bc7_gpu_with_mips(
+    encoder: &mut GpuEncoder,
+    rgba: &RgbaImage,
+    levels: u32,
+) -> Result<Vec<u8>> {
     let width = rgba.width();
     let height = rgba.height();
 
     debug!("GPU BC7 encoding {}x{} with mipmaps", width, height);
 
     // Pre-generate all mipmap levels on CPU with edge-replication padding
-    let mips = build_bc7_mip_images(rgba.clone(), width, height);
+    let mut mips = build_bc7_mip_images(rgba.clone(), width, height);
+    mips.truncate(levels as usize);
 
     // Encode all mips on GPU using batch processing
     let mut batch = encoder.create_batch();
@@ -829,6 +982,38 @@ pub fn resize_texture(
 pub fn process_texture_batch(
     jobs: Vec<TextureJob>,
 ) -> Vec<(Option<String>, Result<ProcessedTexture>)> {
+    // Preparation failures and CPU/GPU partitions can reorder completion.
+    // Callers associate results with destinations by input position.
+    let original_ids: Vec<_> = jobs.iter().map(|job| job.id.clone()).collect();
+    let indexed = jobs
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut job)| {
+            job.id = Some(i.to_string());
+            job
+        })
+        .collect();
+    let mut ordered: Vec<Option<Result<ProcessedTexture>>> =
+        (0..original_ids.len()).map(|_| None).collect();
+    for (id, result) in process_texture_batch_unordered(indexed) {
+        if let Some(index) = id
+            .and_then(|s| s.parse::<usize>().ok())
+            .filter(|&i| i < ordered.len())
+        {
+            ordered[index] = Some(result);
+        }
+    }
+    original_ids
+        .into_iter()
+        .zip(ordered.into_iter().map(|result| {
+            result.unwrap_or_else(|| Err(anyhow!("Texture batch omitted an output")))
+        }))
+        .collect()
+}
+
+fn process_texture_batch_unordered(
+    jobs: Vec<TextureJob>,
+) -> Vec<(Option<String>, Result<ProcessedTexture>)> {
     let total = jobs.len();
     let completed = AtomicUsize::new(0);
 
@@ -841,9 +1026,9 @@ pub fn process_texture_batch(
     let _ = init_gpu();
 
     // Separate BC7 jobs from others
-    let (bc7_jobs, other_jobs): (Vec<_>, Vec<_>) = jobs
-        .into_iter()
-        .partition(|j| j.format == OutputFormat::BC7);
+    let (bc7_jobs, other_jobs): (Vec<_>, Vec<_>) = jobs.into_iter().partition(|j| {
+        j.format == OutputFormat::BC7 && matches!(needs_surface_preservation(&j.data), Ok(false))
+    });
 
     let mut results: Vec<(Option<String>, Result<ProcessedTexture>)> = Vec::with_capacity(total);
 
@@ -1062,7 +1247,8 @@ fn process_batch_cpu(
 ) -> Vec<(Option<String>, Result<ProcessedTexture>)> {
     jobs.into_par_iter()
         .map(|job| {
-            let result = process_texture_cpu(&job.data, job.width, job.height, job.format);
+            let result =
+                process_texture_cpu(&job.data, job.width, job.height, job.format, job.mip_levels);
             completed.fetch_add(1, Ordering::Relaxed);
             (job.id, result)
         })
@@ -1075,10 +1261,21 @@ fn process_texture_cpu(
     target_width: u32,
     target_height: u32,
     output_format: OutputFormat,
+    mip_levels: u32,
 ) -> Result<ProcessedTexture> {
+    let levels = requested_mip_levels(target_width, target_height, mip_levels)?;
+    if needs_surface_preservation(input_data)? {
+        return process_texture_surfaces(
+            input_data,
+            target_width,
+            target_height,
+            output_format,
+            levels,
+        );
+    }
     // BC6H: route through DirectXTex
     if output_format == OutputFormat::BC6H {
-        return process_texture_bc6h_directxtex(input_data, target_width, target_height);
+        return process_texture_bc6h_directxtex(input_data, target_width, target_height, levels);
     }
 
     let rgba = decode_dds_to_rgba(input_data)?;
@@ -1104,7 +1301,11 @@ fn process_texture_cpu(
         .context("No image_dds format for this output format")?;
     let surface = SurfaceRgba8::from_image(&resized);
     let encoded = surface
-        .encode(image_format, Quality::Normal, Mipmaps::GeneratedAutomatic)
+        .encode(
+            image_format,
+            Quality::Normal,
+            Mipmaps::GeneratedExact(levels),
+        )
         .context("Failed to encode texture")?;
 
     let output_dds = encoded.to_dds().context("Failed to create DDS")?;
@@ -1230,6 +1431,158 @@ pub fn process_texture_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn layered_fixture(cube: bool) -> Vec<u8> {
+        let mut scratch = ScratchImage::default();
+        if cube {
+            scratch
+                .initialize_cube(
+                    DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM,
+                    8,
+                    8,
+                    1,
+                    1,
+                    directxtex::CP_FLAGS::default(),
+                )
+                .unwrap();
+        } else {
+            scratch
+                .initialize_2d(
+                    DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM,
+                    8,
+                    8,
+                    2,
+                    1,
+                    directxtex::CP_FLAGS::default(),
+                )
+                .unwrap();
+        }
+        for (face, pixels) in scratch.pixels_mut().chunks_exact_mut(8 * 8 * 4).enumerate() {
+            for pixel in pixels.chunks_exact_mut(4) {
+                pixel.copy_from_slice(&[face as u8 * 30, 80, 150, 255]);
+            }
+        }
+        scratch
+            .save_dds(DDS_FLAGS::default())
+            .unwrap()
+            .buffer()
+            .to_vec()
+    }
+
+    #[test]
+    fn conversion_preserves_cubemap_faces_arrays_and_requested_mips() {
+        for cube in [false, true] {
+            let source = layered_fixture(cube);
+            for levels in [1, 2] {
+                let output =
+                    process_texture_with_mips(&source, 4, 4, OutputFormat::Bgra, levels).unwrap();
+                let decoded =
+                    ScratchImage::load_dds(&output.data, DDS_FLAGS::default(), None, None)
+                        .unwrap()
+                        .convert(
+                            DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM,
+                            TEX_FILTER_FLAGS::TEX_FILTER_DEFAULT,
+                            0.5,
+                        )
+                        .unwrap();
+                assert_eq!(decoded.metadata().array_size, if cube { 6 } else { 2 });
+                assert_eq!(decoded.metadata().is_cubemap(), cube);
+                assert_eq!(decoded.metadata().mip_levels, levels as usize);
+                for face in 0..decoded.metadata().array_size {
+                    let image = decoded.image(0, face, 0).unwrap();
+                    let pixel = unsafe { std::slice::from_raw_parts(image.pixels, 4) };
+                    assert_eq!(pixel, &[face as u8 * 30, 80, 150, 255]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn two_dimensional_conversion_uses_exact_mip_count() {
+        let source =
+            SurfaceRgba8::from_image(&RgbaImage::from_pixel(8, 8, image::Rgba([32, 64, 96, 255])))
+                .encode(ImageFormat::Rgba8Unorm, Quality::Normal, Mipmaps::Disabled)
+                .unwrap()
+                .to_dds()
+                .unwrap();
+        let mut bytes = Vec::new();
+        source.write(&mut bytes).unwrap();
+        for levels in [1, 2, 4] {
+            let output =
+                process_texture_with_mips(&bytes, 8, 8, OutputFormat::Rgba, levels).unwrap();
+            let dds = Dds::read(Cursor::new(output.data)).unwrap();
+            assert_eq!(dds.header.mip_map_count.unwrap_or(1), levels);
+            assert_eq!(
+                dds.data.len(),
+                (0..levels)
+                    .map(|m| ((8u32 >> m).max(1).pow(2) * 4) as usize)
+                    .sum::<usize>()
+            );
+        }
+        assert!(process_texture_with_mips(&bytes, 8, 8, OutputFormat::Rgba, 5).is_err());
+    }
+
+    #[test]
+    fn batch_results_remain_in_input_order_across_failures_and_formats() {
+        let mut bytes = Vec::new();
+        SurfaceRgba8::from_image(&RgbaImage::from_pixel(8, 8, image::Rgba([32, 64, 96, 255])))
+            .encode(ImageFormat::Rgba8Unorm, Quality::Normal, Mipmaps::Disabled)
+            .unwrap()
+            .to_dds()
+            .unwrap()
+            .write(&mut bytes)
+            .unwrap();
+        let jobs = vec![
+            TextureJob {
+                data: bytes.clone(),
+                width: 8,
+                height: 8,
+                mip_levels: 1,
+                format: OutputFormat::Rgba,
+                id: None,
+            },
+            TextureJob {
+                data: bytes.clone(),
+                width: 8,
+                height: 8,
+                mip_levels: 1,
+                format: OutputFormat::BC7,
+                id: Some("same".into()),
+            },
+            TextureJob {
+                data: bytes,
+                width: 8,
+                height: 8,
+                mip_levels: 10,
+                format: OutputFormat::BC7,
+                id: Some("same".into()),
+            },
+            TextureJob {
+                data: layered_fixture(true),
+                width: 4,
+                height: 4,
+                mip_levels: 1,
+                format: OutputFormat::BC7,
+                id: Some("cube".into()),
+            },
+        ];
+        let output = process_texture_batch(jobs);
+        assert_eq!(output.len(), 4);
+        assert_eq!(output[0].0, None);
+        assert_eq!(output[0].1.as_ref().unwrap().format, OutputFormat::Rgba);
+        assert_eq!(output[1].0.as_deref(), Some("same"));
+        assert_eq!(
+            texture_metadata(&output[1].1.as_ref().unwrap().data)
+                .unwrap()
+                .mip_levels,
+            1
+        );
+        assert!(output[2].1.is_err());
+        assert_eq!(output[3].0.as_deref(), Some("cube"));
+        assert!(texture_metadata(&output[3].1.as_ref().unwrap().data)
+            .unwrap()
+            .is_cubemap());
+    }
 
     #[test]
     fn bc7_mips_align_every_dimension_and_replicate_edges() {

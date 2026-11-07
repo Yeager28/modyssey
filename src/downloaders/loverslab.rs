@@ -150,8 +150,32 @@ impl LoversLabDownloader {
         output_path: &Path,
         progress: Option<&ProgressCallback>,
     ) -> Result<()> {
+        self.download_with_expected_size(page_url, expected_name, output_path, progress, None)
+            .await
+    }
+
+    /// Like [`Self::download_with_callback`], and when `expected_size` is known
+    /// it also copes with an author renaming a file on the site: if no chooser
+    /// entry has the requested name, the entry whose `Content-Length` equals the
+    /// size the modlist recorded is downloaded instead. The caller still
+    /// verifies the content hash, so a wrong guess is rejected, not installed.
+    pub async fn download_with_expected_size(
+        &self,
+        page_url: &str,
+        expected_name: &str,
+        output_path: &Path,
+        progress: Option<&ProgressCallback>,
+        expected_size: Option<u64>,
+    ) -> Result<()> {
         if !is_loverslab_url(page_url) {
             bail!("Expected a LoversLab URL");
+        }
+        let parsed_url = Url::parse(page_url).context("Invalid LoversLab URL")?;
+        // Modlists can already point at the attachment itself. It is not an
+        // IPS Downloads record: preserve its id/key and use the logged-in
+        // session without trying to turn it into a file chooser URL.
+        if parsed_url.path() == "/applications/core/interface/file/attachment.php" {
+            return self.download_file(page_url, output_path, progress).await;
         }
         if page_url.contains("/topic/") || page_url.contains("/blogs/entry/") {
             return self
@@ -184,10 +208,25 @@ impl LoversLabDownloader {
         if is_file_response(response.headers()) {
             return Self::stream_response_to_file(response, output_path, progress).await;
         }
+        let is_json = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| value.contains("json"));
         let html = response
             .text()
             .await
             .context("Failed to read LL file chooser")?;
+        // A page with a single file that is hosted elsewhere (for example
+        // Mega) answers the chooser's AJAX request with {"redirect": url}.
+        if is_json {
+            if let Some(target) = json_redirect(&html) {
+                info!("LoversLab redirects {} to an external host", expected_name);
+                return self
+                    .download_file(target.as_str(), output_path, progress)
+                    .await;
+            }
+        }
         if html.contains("_processLogin") || html.contains("id=\"elSignIn_submit\"") {
             bail!("LoversLab session expired — re-login required");
         }
@@ -219,6 +258,21 @@ impl LoversLabDownloader {
             }
         }
 
+        if let Some(size) = expected_size {
+            for entry in &entries {
+                if self
+                    .download_entry_sized(entry, output_path, progress, Some(size))
+                    .await?
+                {
+                    info!(
+                        "LL file '{}' was renamed to '{}'; matched by size",
+                        expected_name, entry.name
+                    );
+                    return Ok(());
+                }
+            }
+        }
+
         // Authors can attach additional files inside a download description.
         // These do not appear in the Downloads chooser (Tahrovin's SCOE pack
         // is one example). Query the same numeric record and match attachments.
@@ -240,6 +294,20 @@ impl LoversLabDownloader {
         output_path: &Path,
         progress: Option<&ProgressCallback>,
     ) -> Result<()> {
+        self.download_entry_sized(entry, output_path, progress, None)
+            .await
+            .map(|_| ())
+    }
+
+    /// Returns `Ok(false)` without writing anything when `require_len` is set
+    /// and the server does not announce exactly that many bytes.
+    async fn download_entry_sized(
+        &self,
+        entry: &FileEntry,
+        output_path: &Path,
+        progress: Option<&ProgressCallback>,
+        require_len: Option<u64>,
+    ) -> Result<bool> {
         let url = controller_download_url(&entry.download_url, true)
             .or_else(|| Url::parse(&entry.download_url).ok())
             .context("Invalid LoversLab download action")?;
@@ -264,7 +332,7 @@ impl LoversLabDownloader {
             info!("Waiting {} seconds for LoversLab download", seconds);
             tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
         }
-        self.download_file(url.as_str(), output_path, progress)
+        self.download_file_sized(url.as_str(), output_path, progress, require_len)
             .await
     }
 
@@ -314,20 +382,41 @@ impl LoversLabDownloader {
         output_path: &Path,
         progress: Option<&ProgressCallback>,
     ) -> Result<()> {
+        self.download_file_sized(url, output_path, progress, None)
+            .await
+            .map(|_| ())
+    }
+
+    async fn download_file_sized(
+        &self,
+        url: &str,
+        output_path: &Path,
+        progress: Option<&ProgressCallback>,
+        require_len: Option<u64>,
+    ) -> Result<bool> {
         let url = Url::parse(url).context("Invalid LL attachment URL")?;
         match self.request_download(&url, false).await? {
             DownloadResponse::Mega(url) => {
+                // Mega does not announce a size up front, so it cannot be
+                // used to identify a renamed file.
+                if require_len.is_some() {
+                    return Ok(false);
+                }
                 super::mega_native::download_mega_file_with_callback(
                     url.as_str(),
                     output_path,
                     progress,
                 )
-                .await
+                .await?;
             }
             DownloadResponse::Http(response) => {
-                Self::stream_response_to_file(response, output_path, progress).await
+                if require_len.is_some_and(|len| response.content_length() != Some(len)) {
+                    return Ok(false);
+                }
+                Self::stream_response_to_file(response, output_path, progress).await?;
             }
         }
+        Ok(true)
     }
 
     /// Stream an HTTP response body to a file, verifying Content-Length.
@@ -591,6 +680,14 @@ struct DownloadCountdown {
     download: u64,
     #[serde(rename = "currentTime")]
     current_time: u64,
+}
+
+/// The target of an IPS `{"redirect": "..."}` AJAX answer, if it is a web URL.
+fn json_redirect(body: &str) -> Option<Url> {
+    let value: serde_json::Value = serde_json::from_str(body).ok()?;
+    let target = value.get("redirect")?.as_str()?;
+    let url = Url::parse(BASE_URL).ok()?.join(target).ok()?;
+    matches!(url.scheme(), "http" | "https").then_some(url)
 }
 
 fn query_value(url: &Url, key: &str) -> Option<String> {
@@ -1004,11 +1101,12 @@ mod tests {
 
     async fn server(
         responses: Vec<(&'static str, &'static str)>,
-    ) -> (Url, tokio::task::JoinHandle<()>) {
+    ) -> (Url, tokio::task::JoinHandle<Vec<String>>) {
         use tokio::io::AsyncReadExt;
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = Url::parse(&format!("http://{}/start", listener.local_addr().unwrap())).unwrap();
         let task = tokio::spawn(async move {
+            let mut requests = Vec::new();
             for (path, response) in responses {
                 let (mut socket, _) =
                     tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
@@ -1025,10 +1123,51 @@ mod tests {
                 assert!(
                     String::from_utf8_lossy(&request).starts_with(&format!("GET {path} HTTP/1.1"))
                 );
+                requests.push(String::from_utf8(request).unwrap());
                 socket.write_all(response.as_bytes()).await.unwrap();
             }
+            requests
         });
         (url, task)
+    }
+
+    #[tokio::test]
+    async fn direct_attachment_uses_session_and_preserves_attachment_key() {
+        // A loopback proxy exercises the public LL URL routing and cookie jar
+        // without an account or any requests to the real site.
+        const ATTACHMENT: &str = "http://www.loverslab.com/applications/core/interface/file/attachment.php?id=1947021&key=fixture%2Bkey";
+        let (proxy, server) = server(vec![(ATTACHMENT,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/x-7z-compressed\r\nContent-Length: 4\r\nConnection: close\r\n\r\ndata",
+        )]).await;
+        let jar = Arc::new(Jar::default());
+        jar.add_cookie_str(
+            "ips4_member_id=fixture; Path=/",
+            &Url::parse(ATTACHMENT).unwrap(),
+        );
+        let client = Client::builder()
+            .proxy(reqwest::Proxy::http(proxy.as_str()).unwrap())
+            .cookie_provider(jar)
+            .redirect(reqwest::redirect::Policy::none())
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .unwrap();
+        let downloader = LoversLabDownloader {
+            client: client.clone(),
+            no_redirect_client: client,
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let output = dir.path().join("patch.7z");
+        downloader
+            .download(ATTACHMENT, "patch.7z", &output)
+            .await
+            .unwrap();
+        assert_eq!(std::fs::read(output).unwrap(), b"data");
+        let requests = server.await.unwrap();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].contains("ips4_member_id=fixture"));
+        assert!(!requests[0]
+            .to_ascii_lowercase()
+            .contains("x-requested-with:"));
     }
 
     #[tokio::test]
@@ -1239,6 +1378,17 @@ mod tests {
             result.name,
             "CO More Creatures 1.8.2 (With Hostile Creatures).rar"
         );
+    }
+
+    #[test]
+    fn json_redirect_keeps_the_mega_key_fragment() {
+        let body = r#"{"redirect":"https:\/\/mega.nz\/file\/3A90hQZS#wqqyGkKrYGPG","message":""}"#;
+        let url = json_redirect(body).unwrap();
+        assert_eq!(url.domain(), Some("mega.nz"));
+        assert_eq!(url.fragment(), Some("wqqyGkKrYGPG"));
+        assert!(json_redirect("<html></html>").is_none());
+        assert!(json_redirect(r#"{"download":1,"currentTime":0}"#).is_none());
+        assert!(json_redirect(r#"{"redirect":"javascript:alert(1)"}"#).is_none());
     }
 
     #[test]

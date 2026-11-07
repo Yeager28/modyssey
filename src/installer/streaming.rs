@@ -1785,7 +1785,7 @@ fn process_spilled_dds_batched(jobs: Vec<SpilledDdsJob>, ctx: &ProcessContext) -
     use crate::installer::handlers::texture::is_fallback_mode;
     use crate::installer::sidecar;
     use crate::textures::{
-        process_texture_batch, process_texture_with_fallback, OutputFormat, TextureJob,
+        process_texture_batch, process_texture_with_mips, OutputFormat, TextureJob,
     };
 
     // Pre-filter: skip jobs whose output already has a valid sidecar
@@ -1834,6 +1834,7 @@ fn process_spilled_dds_batched(jobs: Vec<SpilledDdsJob>, ctx: &ProcessContext) -
                             data,
                             width: j.directive.image_state.width,
                             height: j.directive.image_state.height,
+                            mip_levels: j.directive.image_state.mip_levels,
                             format: OutputFormat::BC7,
                             id: Some(format!("{}", j.id)),
                         }),
@@ -1844,9 +1845,18 @@ fn process_spilled_dds_batched(jobs: Vec<SpilledDdsJob>, ctx: &ProcessContext) -
                     })
                     .collect();
 
-                let results = process_texture_batch(tex_jobs);
+                let mut results: HashMap<_, _> = process_texture_batch(tex_jobs)
+                    .into_iter()
+                    .filter_map(|(id, result)| id.map(|id| (id, result)))
+                    .collect();
 
-                for (job, (_job_id, result)) in chunk.iter().zip(results.into_iter()) {
+                for job in chunk {
+                    let result = results.remove(&job.id.to_string()).unwrap_or_else(|| {
+                        Err(anyhow::anyhow!(
+                            "Texture source could not be read for {}",
+                            job.directive.to
+                        ))
+                    });
                     match result {
                         Ok(processed) => {
                             let out =
@@ -1900,11 +1910,12 @@ fn process_spilled_dds_batched(jobs: Vec<SpilledDdsJob>, ctx: &ProcessContext) -
             for job in format_jobs {
                 let result: anyhow::Result<()> = (|| {
                     let data = job.read_data()?;
-                    let (tex, _) = process_texture_with_fallback(
+                    let tex = process_texture_with_mips(
                         &data,
                         job.directive.image_state.width,
                         job.directive.image_state.height,
                         fmt,
+                        job.directive.image_state.mip_levels,
                     )?;
                     let out = paths::join_windows_path(&ctx.config.output_dir, &job.directive.to);
                     ctx.dir_cache.ensure_parent_dirs(&out)?;
@@ -2081,7 +2092,7 @@ pub(crate) fn process_dds_jobs_inline(jobs: Vec<DdsJob>, ctx: &ProcessContext) -
 
     use crate::installer::handlers::texture::is_fallback_mode;
     use crate::textures::{
-        process_texture_batch, process_texture_with_fallback, OutputFormat, TextureJob,
+        process_texture_batch, process_texture_with_mips, OutputFormat, TextureJob,
     };
 
     let ok_count = AtomicUsize::new(0);
@@ -2108,14 +2119,24 @@ pub(crate) fn process_dds_jobs_inline(jobs: Vec<DdsJob>, ctx: &ProcessContext) -
                     data: j.data.clone(),
                     width: j.directive.image_state.width,
                     height: j.directive.image_state.height,
+                    mip_levels: j.directive.image_state.mip_levels,
                     format: OutputFormat::BC7,
                     id: Some(format!("{}", j.id)),
                 })
                 .collect();
 
-            let results = process_texture_batch(tex_jobs);
+            let mut results: HashMap<_, _> = process_texture_batch(tex_jobs)
+                .into_iter()
+                .filter_map(|(id, result)| id.map(|id| (id, result)))
+                .collect();
 
-            for (job, (_job_id, result)) in jobs.iter().zip(results.into_iter()) {
+            for job in &jobs {
+                let result = results.remove(&job.id.to_string()).unwrap_or_else(|| {
+                    Err(anyhow::anyhow!(
+                        "Texture source could not be read for {}",
+                        job.directive.to
+                    ))
+                });
                 match result {
                     Ok(processed) => {
                         let out =
@@ -2157,11 +2178,12 @@ pub(crate) fn process_dds_jobs_inline(jobs: Vec<DdsJob>, ctx: &ProcessContext) -
         } else {
             jobs.par_iter().for_each(|job| {
                 let result: anyhow::Result<()> = (|| {
-                    let (tex, _) = process_texture_with_fallback(
+                    let tex = process_texture_with_mips(
                         &job.data,
                         job.directive.image_state.width,
                         job.directive.image_state.height,
                         fmt,
+                        job.directive.image_state.mip_levels,
                     )?;
                     let out = paths::join_windows_path(&ctx.config.output_dir, &job.directive.to);
                     ctx.dir_cache.ensure_parent_dirs(&out)?;
@@ -2708,7 +2730,7 @@ pub(crate) fn process_spilled_dds_jobs_with_progress(
 
     use crate::installer::handlers::texture::is_fallback_mode;
     use crate::textures::{
-        init_gpu, process_texture_batch, process_texture_with_fallback, OutputFormat, TextureJob,
+        init_gpu, process_texture_batch, process_texture_with_mips, OutputFormat, TextureJob,
     };
 
     let total_tex = dds_jobs.len();
@@ -2767,20 +2789,29 @@ pub(crate) fn process_spilled_dds_jobs_with_progress(
                             data,
                             width: j.directive.image_state.width,
                             height: j.directive.image_state.height,
+                            mip_levels: j.directive.image_state.mip_levels,
                             format: OutputFormat::BC7,
                             id: Some(format!("{}", j.id)),
                         }),
                         Err(e) => {
                             warn!("DDS spill read failed for texture {}: {:#}", j.id, e);
-                            dds_fail.fetch_add(1, Ordering::Relaxed);
                             None
                         }
                     })
                     .collect();
 
-                let results = process_texture_batch(tex_jobs);
+                let mut results: HashMap<_, _> = process_texture_batch(tex_jobs)
+                    .into_iter()
+                    .filter_map(|(id, result)| id.map(|id| (id, result)))
+                    .collect();
 
-                for (job, (_job_id, result)) in chunk.iter().zip(results.into_iter()) {
+                for job in chunk {
+                    let result = results.remove(&job.id.to_string()).unwrap_or_else(|| {
+                        Err(anyhow::anyhow!(
+                            "Texture source could not be read for {}",
+                            job.directive.to
+                        ))
+                    });
                     match result {
                         Ok(processed) => {
                             let out =
@@ -2843,11 +2874,12 @@ pub(crate) fn process_spilled_dds_jobs_with_progress(
             jobs.par_iter().for_each(|job| {
                 let result: anyhow::Result<()> = (|| {
                     let data = job.read_data()?;
-                    let (tex, _) = process_texture_with_fallback(
+                    let tex = process_texture_with_mips(
                         &data,
                         job.directive.image_state.width,
                         job.directive.image_state.height,
                         fmt,
+                        job.directive.image_state.mip_levels,
                     )?;
                     let out = paths::join_windows_path(&ctx.config.output_dir, &job.directive.to);
                     ctx.dir_cache.ensure_parent_dirs(&out)?;

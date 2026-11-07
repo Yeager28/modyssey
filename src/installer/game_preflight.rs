@@ -28,6 +28,9 @@ pub struct GameFileCheck {
     pub expected_hash: String,
     /// What we saw on disk.
     pub status: CheckStatus,
+    /// For a hash mismatch, which game builds the two hashes belong to, when
+    /// the built-in game index knows.
+    pub hint: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,10 +111,15 @@ impl PreflightReport {
         }
         for c in mismatched {
             match &c.status {
-                CheckStatus::Mismatch(actual) => s.push_str(&format!(
-                    "  MISMATCH: {} (expected {}, got {})\n",
-                    c.file, c.expected_hash, actual
-                )),
+                CheckStatus::Mismatch(actual) => {
+                    s.push_str(&format!(
+                        "  MISMATCH: {} (expected {}, got {})\n",
+                        c.file, c.expected_hash, actual
+                    ));
+                    if let Some(hint) = &c.hint {
+                        s.push_str(&format!("            {}\n", hint));
+                    }
+                }
                 CheckStatus::ReadError(err) => {
                     s.push_str(&format!("  READ ERR: {} — {}\n", c.file, err))
                 }
@@ -227,10 +235,17 @@ fn verify(game_files: &[GameFileSourceState], game_dir: &Path) -> PreflightRepor
                 },
             };
 
+            let hint = match &status {
+                CheckStatus::Mismatch(actual) => crate::game_index::GameIndex::embedded()
+                    .explain_mismatch(&gfs.game, &expected_hash, actual),
+                _ => None,
+            };
+
             GameFileCheck {
                 file,
                 expected_hash,
                 status,
+                hint,
             }
         })
         .collect();

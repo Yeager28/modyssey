@@ -1976,7 +1976,7 @@ fn process_transformed_texture(
     }
 
     use crate::textures::{
-        process_texture_batch, process_texture_with_fallback, OutputFormat, TextureJob,
+        process_texture_batch, process_texture_with_mips, OutputFormat, TextureJob,
     };
 
     let total_archives = by_archive.len();
@@ -2250,6 +2250,7 @@ fn process_transformed_texture(
                                 data,
                                 width: st.directive.image_state.width,
                                 height: st.directive.image_state.height,
+                                mip_levels: st.directive.image_state.mip_levels,
                                 format: OutputFormat::BC7,
                                 id: Some(format!("{}", st.id)),
                             },
@@ -2336,11 +2337,12 @@ fn process_transformed_texture(
                 let result: Result<()> = (|| {
                     let data = fs::read(&st.staged_path)
                         .with_context(|| format!("Failed to read staged texture {}", st.id))?;
-                    let (processed, _) = process_texture_with_fallback(
+                    let processed = process_texture_with_mips(
                         &data,
                         st.directive.image_state.width,
                         st.directive.image_state.height,
                         fmt,
+                        st.directive.image_state.mip_levels,
                     )?;
                     let output_path = ctx.resolve_output_path(&st.directive.to);
                     ctx.dir_cache.ensure_parent_dirs(&output_path)?;

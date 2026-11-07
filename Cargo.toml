@@ -1,6 +1,6 @@
 [package]
 name = "clf3"
-version = "0.2.8"
+version = "0.2.9"
 edition = "2021"
 description = "Wabbajack and Nexus Collections installer for Linux"
 license = "MIT"
@@ -133,6 +133,10 @@ egui_extras = { version = "0.31", features = ["image"] }
 rfd = "0.15"
 roxmltree = "0.21.1"
 libloot = "0.29"
+steam-vent = "0.5"
+rpassword = "7"
+keyring-core = "1"
+zbus-secret-service-keyring-store = { version = "1", features = ["rt-async-io-crypto-rust"] }
 
 [profile.release]
 lto = "thin"

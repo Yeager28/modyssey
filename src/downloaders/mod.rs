@@ -13,6 +13,7 @@ pub mod loverslab;
 mod mediafire;
 pub mod mega_native;
 mod nexus;
+pub mod nexus_files;
 pub mod wabbajack_cdn;
 pub mod yandex;
 
@@ -24,6 +25,7 @@ pub use http::{
 pub use loverslab::LoversLabDownloader;
 pub use mediafire::MediaFireDownloader;
 pub use nexus::{NexusDownloader, NexusRateLimits};
+pub use nexus_files::{NexusFile, NexusFileListing, NexusFileUpdate};
 pub use wabbajack_cdn::WabbajackCdnDownloader;
 pub use yandex::YandexDownloader;
 

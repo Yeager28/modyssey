@@ -189,7 +189,7 @@ pub fn prepare(
     };
     acquire::check(token)?;
     let opened = CollectionPackage::open(&package)?;
-    let game_profile = crate::collection::games::require(opened.collection.domain())?;
+    let game_profile = opened.collection.require_profile()?;
     let version = if inputs.game.as_os_str().is_empty() {
         None
     } else {
@@ -289,7 +289,7 @@ pub fn preflight(prepared: &Prepared) -> Result<()> {
         bail!("Resolve the compatibility problems before installing");
     }
     let input = &prepared.inputs;
-    let game_profile = crate::collection::games::require(&prepared.plan.domain)?;
+    let game_profile = prepared.plan.require_profile()?;
     if input.game.as_os_str().is_empty()
         || crate::collection::paths::resolve_file(&input.game, game_profile.executable).is_err()
     {
@@ -514,7 +514,7 @@ pub fn install(
         expected
     } else {
         if prepared.inputs.masterlist.as_os_str().is_empty() {
-            acquire::masterlist_for(&prepared.plan.domain, &masterlist, token)?;
+            acquire::masterlist_for(prepared.plan.require_profile()?.domain, &masterlist, token)?;
         } else {
             std::fs::copy(&prepared.inputs.masterlist, &masterlist)?;
         }

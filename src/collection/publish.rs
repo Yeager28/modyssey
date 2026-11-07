@@ -243,7 +243,7 @@ pub fn publish_with_progress(
     {
         bail!("Collection job is incomplete");
     }
-    let game_profile = super::games::require(&journal.plan.domain)?;
+    let game_profile = journal.plan.require_profile()?;
     let game_exe = resolve_file(&game, game_profile.executable).with_context(|| {
         format!(
             "Game directory does not contain {}",
@@ -701,7 +701,7 @@ pub fn publish_with_progress(
         &profile,
         &root.join(".collection/ini-tweaks"),
         &journal.plan.ini_tweaks,
-        &journal.plan.domain,
+        game_profile,
     )?;
     let out = output.to_str().context("Non-UTF8 instance path")?;
     if journal.plan.launcher_name.is_some() {
@@ -1006,7 +1006,7 @@ fn loot_sort(
         local.join("userlist.yaml"),
         serde_json::to_vec_pretty(&userlist)?,
     )?;
-    let game_profile = super::games::require(&journal.plan.domain)?;
+    let game_profile = journal.plan.require_profile()?;
     std::fs::write(
         local.join("plugins.txt"),
         game_profile.plugin_list(
