@@ -355,7 +355,9 @@ fn worker_recovery_checks_each_games_ini_and_timestamp_state() {
                 .output
                 .join("Stock Game/Data")
                 .join(game.base_plugins[0]);
-            std::fs::File::open(path)
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(path)
                 .unwrap()
                 .set_modified(std::time::SystemTime::now())
                 .unwrap();
@@ -505,7 +507,10 @@ fn enderal_profiles_follow_their_engines() {
     assert!(le.masterlist.url().contains("/loot/enderal/63b9f2d1"));
     // The SE plugin list carries the two plugins the game does not load alone.
     let list = se
-        .plugin_list([("Enderal - Forgotten Stories.esm", true), ("SkyUI_SE.esp", true)])
+        .plugin_list([
+            ("Enderal - Forgotten Stories.esm", true),
+            ("SkyUI_SE.esp", true),
+        ])
         .unwrap();
     assert_eq!(list, b"*Enderal - Forgotten Stories.esm\n*SkyUI_SE.esp\n");
     // Enderal LE lists only enabled plugins, without stars.
@@ -522,12 +527,24 @@ fn vr_collections_resolve_from_their_game_versions() {
     // Nexus files VR mods under the base game's domain, so only the game
     // versions name the edition.
     let vr = |d, v: &[&str]| games::resolve(d, &versions(v)).map(|g| g.domain);
-    assert_eq!(vr("skyrimspecialedition", &["1.4.15.0-VR"]), Some("skyrimvr"));
-    assert_eq!(vr("skyrimspecialedition", &[" 1.4.15.0-vr "]), Some("skyrimvr"));
+    assert_eq!(
+        vr("skyrimspecialedition", &["1.4.15.0-VR"]),
+        Some("skyrimvr")
+    );
+    assert_eq!(
+        vr("skyrimspecialedition", &[" 1.4.15.0-vr "]),
+        Some("skyrimvr")
+    );
     assert_eq!(vr("fallout4", &["1.2.72.0-VR"]), Some("fallout4vr"));
     // Base-game collections, with no or ordinary versions, stay base-game.
-    assert_eq!(vr("skyrimspecialedition", &[]), Some("skyrimspecialedition"));
-    assert_eq!(vr("skyrimspecialedition", &["1.6.1170.0"]), Some("skyrimspecialedition"));
+    assert_eq!(
+        vr("skyrimspecialedition", &[]),
+        Some("skyrimspecialedition")
+    );
+    assert_eq!(
+        vr("skyrimspecialedition", &["1.6.1170.0"]),
+        Some("skyrimspecialedition")
+    );
     assert_eq!(vr("fallout4", &["1.10.163.0"]), Some("fallout4"));
     // A collection that also lists the base game's versions is not VR-only.
     assert_eq!(
@@ -645,7 +662,11 @@ fn vr_runtime_versions_match_their_suffixed_collection_versions() {
     // Flat games stay exact: a mixed collection installs as the flat game, and a
     // VR runtime must not satisfy it through the suffix rule.
     assert_eq!(
-        blockers_for("skyrimspecialedition", &["1.6.1170.0", "1.4.15.0-VR"], "1.4.15.0"),
+        blockers_for(
+            "skyrimspecialedition",
+            &["1.6.1170.0", "1.4.15.0-VR"],
+            "1.4.15.0"
+        ),
         ["game_version_mismatch"]
     );
     assert!(blockers_for("skyrimspecialedition", &["1.6.1170.0"], "1.6.1170.0").is_empty());

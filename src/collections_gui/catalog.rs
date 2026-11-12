@@ -1,6 +1,6 @@
+use eframe::egui;
 use modyssey::collection::progress::safe_message;
 use modyssey::collection_app::catalog::{Catalog, Entry, Game, Page, Search, Sort, PAGE_SIZE};
-use eframe::egui;
 use rayon::prelude::*;
 use std::{
     collections::HashMap,

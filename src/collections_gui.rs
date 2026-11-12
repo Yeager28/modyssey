@@ -1,11 +1,11 @@
 //! Standalone Collections view. Long-running I/O stays in application services.
+use eframe::egui;
 use modyssey::collection::{
     progress::{safe_message, WorkerEvent},
     publish::PublicationReport,
     worker::read_json,
 };
 use modyssey::collection_app::{self as app, Event, Inputs, MissingArtifact, Prepared};
-use eframe::egui;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -257,7 +257,8 @@ impl CollectionsView {
     }
 
     fn load(&mut self, ctx: &egui::Context, key: &str) {
-        if let Ok(locator) = modyssey::collection::url::parse_collection_url(self.inputs.source.trim())
+        if let Ok(locator) =
+            modyssey::collection::url::parse_collection_url(self.inputs.source.trim())
         {
             // A VR edition shares its base game's Nexus domain, so keep a game
             // the user chose when it is filed under this collection's domain.

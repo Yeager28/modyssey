@@ -1470,6 +1470,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires DirectXTex COM interface (not available in CI/headless environments)"]
     fn conversion_preserves_cubemap_faces_arrays_and_requested_mips() {
         for cube in [false, true] {
             let source = layered_fixture(cube);

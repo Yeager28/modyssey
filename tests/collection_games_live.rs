@@ -25,7 +25,11 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
             .search(
                 &Search {
                     game: game.nexus_domain().into(),
-                    text: if game.variant.is_some() { "VR".into() } else { String::new() },
+                    text: if game.variant.is_some() {
+                        "VR".into()
+                    } else {
+                        String::new()
+                    },
                     ..Default::default()
                 },
                 &token,

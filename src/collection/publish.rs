@@ -520,7 +520,10 @@ pub fn publish_with_progress(
         for (index, key) in order.iter().enumerate() {
             let path = &published_plugin_paths[key].1;
             let seconds = 1_577_836_800 + index as u64 * 60;
-            File::open(path)?
+            // Setting metadata needs write access on Windows.
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(path)?
                 .set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds))?;
             timestamps.insert(
                 relative_path(
@@ -703,13 +706,13 @@ pub fn publish_with_progress(
         &journal.plan.ini_tweaks,
         game_profile,
     )?;
-    let out = output.to_str().context("Non-UTF8 instance path")?;
-    if journal.plan.launcher_name.is_some() {
-        resolve_file(&stock, game_profile.extender)
-            .context("Collection's script-extender launcher is missing")?;
-    }
-    // QSettings uses backslash escaping even for Unix path-valued strings.
-    if out.contains(['\n', '\r', '\\', '"']) {
+    // QSettings uses backslash escaping even for Unix path-valued strings,
+    // so forward slashes are the portable spelling on every platform.
+    let out = output
+        .to_str()
+        .context("Non-UTF8 instance path")?
+        .replace('\\', "/");
+    if out.contains(['\n', '\r', '"']) {
         bail!("Unsupported instance INI path");
     }
     let has_extender = resolve_file(&stock, game_profile.extender).is_ok();
@@ -819,6 +822,9 @@ pub fn publish_with_progress(
     }
     #[cfg(not(target_os = "linux"))]
     std::fs::rename(root, output).context("Publish completed portable instance")?;
+    // Directory fsync is a Unix durability idiom; opening a directory for
+    // write-sync fails with access-denied on Windows and is not needed there.
+    #[cfg(unix)]
     File::open(parent)?.sync_all()?;
     Ok(report)
 }

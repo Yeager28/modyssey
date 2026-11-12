@@ -116,9 +116,7 @@ impl DownloadProgress {
     fn bytes_per_second(&self) -> f64 {
         let elapsed = self.start_time.elapsed().as_secs_f64();
         if elapsed > 0.0 {
-            self.total_bytes()
-                .saturating_sub(self.initial_bytes) as f64
-                / elapsed
+            self.total_bytes().saturating_sub(self.initial_bytes) as f64 / elapsed
         } else {
             0.0
         }

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: "true"
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+
+      - name: Install 7-Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # The archive fallback probes the standard install path first, so a
+          # real (non-stub) 7z.exe keeps the binary-backed tests meaningful.
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path $sevenZip)) {
+            choco install -y 7zip
+          }
+
+      - name: Formatting
+        run: cargo fmt --check
+
+      # Advisory for now: the codebase carries ~30 pre-existing style
+      # warnings (sort_by_key, field_reassign_with_default, ...) inherited
+      # from the prototype. Tighten to `-D warnings` once those are burnt
+      # down; new warnings are still visible in the job log.
+      - name: Clippy
+        run: cargo clippy --all-targets
+
+      - name: Test
+        run: cargo test --locked -j4
+
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Audit dependencies
+        run: cargo audit

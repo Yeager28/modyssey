@@ -153,7 +153,8 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
         .map(|s| sidecar::normalize_manifest_path(s.path()))
         .collect();
     files.retain(|(name, _)| {
-        !name.ends_with(".modyssey-hash") || expected.contains(&sidecar::normalize_manifest_path(name))
+        !name.ends_with(".modyssey-hash")
+            || expected.contains(&sidecar::normalize_manifest_path(name))
     });
     validate_members(
         files.iter().map(|(name, _)| name.as_str()),

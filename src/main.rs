@@ -471,7 +471,7 @@ async fn main() -> Result<()> {
     }));
 
     #[cfg(unix)]
-     // Signal handler: log SIGTERM/SIGHUP so we know what killed the process.
+    // Signal handler: log SIGTERM/SIGHUP so we know what killed the process.
     {
         let signal_log = log_path.clone();
         std::thread::spawn(move || {

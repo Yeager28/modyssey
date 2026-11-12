@@ -3,16 +3,21 @@ use modyssey::downloaders::WabbajackCdnDownloader;
 use modyssey::hash::compute_bytes_hash;
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, Cursor, Read, Write},
+    io::{Cursor, Read, Write},
     net::TcpListener,
     path::Path,
-    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     thread,
     time::Duration,
+};
+// Only the unix-only hosted-CLI cache test below drives a child process.
+#[cfg(unix)]
+use std::{
+    io::{BufRead, BufReader},
+    process::{Command, Stdio},
 };
 
 #[derive(Clone, Copy)]
@@ -68,6 +73,11 @@ impl Server {
             while !stopping.load(Ordering::Relaxed) {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        // On Windows, accepted sockets inherit the listener's
+                        // non-blocking mode; without this the first read
+                        // returns WouldBlock, gets treated as EOF and the
+                        // server answers a bogus response to no request.
+                        stream.set_nonblocking(false).unwrap();
                         stream
                             .set_read_timeout(Some(Duration::from_secs(3)))
                             .unwrap();
@@ -78,6 +88,12 @@ impl Server {
                                 break;
                             }
                             input.push(byte[0]);
+                        }
+                        // Only respond when a full request head arrived; an
+                        // idle keep-alive or timed-out connection is simply
+                        // closed instead of being answered out of turn.
+                        if !input.ends_with(b"\r\n\r\n") {
+                            continue;
                         }
                         let request = String::from_utf8_lossy(&input);
                         let path = request.split_whitespace().nth(1).unwrap_or("").to_owned();
@@ -276,6 +292,9 @@ async fn matching_hash_does_not_make_a_broken_zip_valid() {
     no_partial_files(temp.path());
 }
 
+// Unix-only: it steers the CLI's cache location via XDG_CACHE_HOME, which the
+// dirs crate (and therefore the Windows port, using %LOCALAPPDATA%) ignores.
+#[cfg(unix)]
 #[test]
 fn hosted_cli_repairs_preallocated_cache_instead_of_reusing_it() {
     let temp = tempfile::tempdir().unwrap();
@@ -358,7 +377,9 @@ async fn cancellation_never_publishes_the_partial_file() {
 
 #[tokio::test]
 async fn gui_browser_replaces_same_size_incomplete_cache() {
-    use modyssey::modlist::browser::{DownloadMetadata, ModlistBrowser, ModlistLinks, ModlistMetadata};
+    use modyssey::modlist::browser::{
+        DownloadMetadata, ModlistBrowser, ModlistLinks, ModlistMetadata,
+    };
     let temp = tempfile::tempdir().unwrap();
     let bytes = archive(b"{}");
     let server = Server::new(&bytes, Mode::Good);

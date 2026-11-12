@@ -13,7 +13,6 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs::File,
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -91,6 +90,9 @@ pub fn atomic_json(path: &Path, value: &impl Serialize) -> Result<()> {
     file.flush()?;
     file.as_file().sync_all()?;
     file.persist(path).map_err(|e| e.error)?;
+    // Directory fsync is a Unix durability idiom; opening a directory for
+    // write-sync fails with access-denied on Windows and is not needed there.
+    #[cfg(unix)]
     File::open(parent)?.sync_all()?;
     Ok(())
 }

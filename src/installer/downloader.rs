@@ -1691,8 +1691,7 @@ fn check_manual(
             // Some modlists mark direct GitHub archives/assets as manual even
             // though no browser interaction is needed. Keep authored prompts
             // manual so any special download instructions are still shown.
-            if manual_state.prompt.trim().is_empty()
-                && is_github_direct_download(&manual_state.url)
+            if manual_state.prompt.trim().is_empty() && is_github_direct_download(&manual_state.url)
             {
                 return None;
             }
@@ -1770,8 +1769,7 @@ fn is_github_direct_download(input: &str) -> bool {
     match segments[2] {
         "archive" => url.path().ends_with(".zip") || url.path().ends_with(".tar.gz"),
         "releases" if segments.len() == 6 => {
-            segments[3] == "download"
-                || (segments[3] == "latest" && segments[4] == "download")
+            segments[3] == "download" || (segments[3] == "latest" && segments[4] == "download")
         }
         _ => false,
     }
@@ -2586,8 +2584,7 @@ async fn download_archive_inner(
                     .await?;
                 return Ok(((), None));
             }
-            if manual_state.prompt.trim().is_empty()
-                && is_github_direct_download(&manual_state.url)
+            if manual_state.prompt.trim().is_empty() && is_github_direct_download(&manual_state.url)
             {
                 download_file_with_callback(
                     &ctx.http,
@@ -3216,7 +3213,10 @@ mod tests {
         let second = downloads.path().join("z-copy.zip");
         fs::write(&first, b"same archive")?;
         fs::write(&second, b"same archive")?;
-        fs::write(downloads.path().join("ignored.modyssey-hash"), b"same archive")?;
+        fs::write(
+            downloads.path().join("ignored.modyssey-hash"),
+            b"same archive",
+        )?;
         fs::write(downloads.path().join("ignored.partial"), b"same archive")?;
         let expected_hash = compute_file_hash(&first)?;
 

@@ -227,8 +227,8 @@ fn extract_programs(archive: &Path, dest: &Path, version: &str) -> Result<()> {
         if wanted.contains(&name) {
             let tmp = dest.join(format!("{name}.partial"));
             entry.unpack(&tmp)?;
-        #[cfg(unix)]
-         std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
+            #[cfg(unix)]
+            std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
             std::fs::rename(&tmp, dest.join(&name))?;
         }
     }
@@ -310,7 +310,7 @@ exec "$ROOT/openmw/bin/openmw" --replace=config --config "$PROFILE" \
 /// copied otherwise.
 pub fn bundle(root: &Path, release: &Release) -> Result<()> {
     #[cfg(unix)]
-     use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::PermissionsExt;
     let dir = root.join("openmw");
     let bin = dir.join("bin");
     std::fs::create_dir_all(&bin)?;
@@ -325,7 +325,7 @@ pub fn bundle(root: &Path, release: &Release) -> Result<()> {
         let wrapper = bin.join(command);
         std::fs::write(&wrapper, wrapper_script(&release.version, program))?;
         #[cfg(unix)]
-         std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
     }
     // Leave only this release's programs behind (an upgrade replaces them).
     for entry in std::fs::read_dir(&dir)?.filter_map(Result::ok) {
@@ -344,7 +344,7 @@ pub fn bundle(root: &Path, release: &Release) -> Result<()> {
     let launcher = root.join("Launch OpenMW.sh");
     std::fs::write(&launcher, LAUNCH_SCRIPT)?;
     #[cfg(unix)]
-     std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755))?;
+    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755))?;
     Ok(())
 }
 
@@ -371,7 +371,7 @@ fn desktop_entry(root: &Path, title: &str) -> String {
 /// normally `~/.local/share/applications`; returns the file written.
 pub fn install_desktop_entry(root: &Path, title: &str, applications: &Path) -> Result<PathBuf> {
     #[cfg(unix)]
-     use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::PermissionsExt;
     let slug: String = root
         .file_name()
         .map(|n| n.to_string_lossy().to_lowercase())
@@ -380,10 +380,13 @@ pub fn install_desktop_entry(root: &Path, title: &str, applications: &Path) -> R
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect();
     std::fs::create_dir_all(applications)?;
-    let file = applications.join(format!("modyssey-openmw-{}.desktop", slug.trim_matches('-')));
+    let file = applications.join(format!(
+        "modyssey-openmw-{}.desktop",
+        slug.trim_matches('-')
+    ));
     std::fs::write(&file, desktop_entry(root, title))?;
     #[cfg(unix)]
-     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755))?;
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755))?;
     Ok(file)
 }
 

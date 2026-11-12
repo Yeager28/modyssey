@@ -1258,7 +1258,8 @@ mod tests {
     #[ignore]
     async fn test_live_modlist_small_files() {
         let selected = std::env::var("DSMODPACK_LL_TEST_ARCHIVE").ok();
-        let path = std::env::var("DSMODPACK_LL_TEST_MODLIST").expect("DSMODPACK_LL_TEST_MODLIST not set");
+        let path =
+            std::env::var("DSMODPACK_LL_TEST_MODLIST").expect("DSMODPACK_LL_TEST_MODLIST not set");
         let mut zip = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
         let modlist: serde_json::Value =
             serde_json::from_reader(zip.by_name("modlist").unwrap()).unwrap();

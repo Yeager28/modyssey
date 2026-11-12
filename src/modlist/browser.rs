@@ -552,8 +552,7 @@ mod tests {
         assert_eq!(cached["dateCreated"], "1970-01-01T00:00:00Z");
         assert_eq!(cached["dateUpdated"], "2026-09-27T10:31:00.8081925Z");
 
-        let old_cache: ModlistMetadata =
-            serde_json::from_str(r#"{"title":"Old entry"}"#).unwrap();
+        let old_cache: ModlistMetadata = serde_json::from_str(r#"{"title":"Old entry"}"#).unwrap();
         assert_eq!(old_cache.date_created, None);
         assert_eq!(old_cache.date_updated, None);
     }

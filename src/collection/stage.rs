@@ -245,10 +245,19 @@ pub fn stage_with_progress(
                     .strip_prefix(temporary.path())?
                     .to_str()
                     .context("Invalid staged output path")?
+                    // Normalize Windows backslashes so consumers that
+                    // split on '/' (publication's Root/ routing) work
+                    // on both platforms.
+                    .replace('\\', "/")
                     .to_owned();
                 std::fs::create_dir_all(target.parent().context("Missing output parent")?)?;
                 reflink_copy::reflink_or_copy(&source, &target)?;
-                File::open(&target)?.sync_all()?;
+                // fsync needs write access on Windows; a read-only handle
+                // is refused there (Unix allows fsync on O_RDONLY handles).
+                std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&target)?
+                    .sync_all()?;
                 if deployment_root == "data" {
                     context.installed.insert(deployed.to_lowercase());
                     if !plan
@@ -727,6 +736,9 @@ fn save_journal(root: &Path, journal: &StagingJournal) -> Result<()> {
     }
     tmp.as_file_mut().sync_all()?;
     tmp.persist(root.join(JOURNAL)).map_err(|e| e.error)?;
+    // Directory fsync is a Unix durability idiom; opening a directory for
+    // write-sync fails with access-denied on Windows and is not needed there.
+    #[cfg(unix)]
     File::open(root)?.sync_all()?;
     Ok(())
 }

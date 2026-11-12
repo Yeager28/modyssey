@@ -58,7 +58,9 @@ pub struct GameProfile {
 impl GameProfile {
     /// The domain Nexus uses for this game's collections and mods.
     pub fn nexus_domain(&self) -> &'static str {
-        self.variant.as_ref().map_or(self.domain, |v| v.nexus_domain)
+        self.variant
+            .as_ref()
+            .map_or(self.domain, |v| v.nexus_domain)
     }
 
     pub fn manager_name(&self) -> &'static str {
@@ -376,7 +378,11 @@ pub static PROFILES: &[GameProfile] = &[
         extender_name: "SKSE",
         extender_prefix: "skse_",
         extender_directory: "skse",
-        base_plugins: &["Skyrim.esm", "Update.esm", "Enderal - Forgotten Stories.esm"],
+        base_plugins: &[
+            "Skyrim.esm",
+            "Update.esm",
+            "Enderal - Forgotten Stories.esm",
+        ],
         creation_club_file: None,
         loot: libloot::GameType::Skyrim,
         masterlist: Masterlist {

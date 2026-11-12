@@ -151,7 +151,7 @@ pub async fn provision(dir: &Path, force: bool) -> Result<ToolSet> {
 /// Unpack only the named files, flat, and mark binaries executable.
 fn extract_wanted(archive: &Path, dest: &Path, wanted: &[(String, &'static str)]) -> Result<()> {
     #[cfg(unix)]
-     use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::PermissionsExt;
     let file = std::fs::File::open(archive)?;
     let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(file));
     for entry in tar.entries()? {
@@ -173,8 +173,8 @@ fn extract_wanted(archive: &Path, dest: &Path, wanted: &[(String, &'static str)]
             .unpack(&tmp)
             .with_context(|| format!("unpacking {name}"))?;
         if *target != "version.txt" {
-        #[cfg(unix)]
-         std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
+            #[cfg(unix)]
+            std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
         }
         std::fs::rename(&tmp, &out)?;
     }

@@ -340,7 +340,7 @@ fn host_responses_cannot_change_job_revision_or_receive_credentials() {
         "https://www.nexusmods.com/games/skyrimspecialedition/collections/qfftpq/revisions/12",
     )
     .unwrap();
-    let response = json!({"type":"collection_package_result","job_id":"job","request_id":"request","locator":locator,"schema_id":1,"package_path":"/tmp/collection.7z"});
+    let response = json!({"type":"collection_package_result","job_id":"job","request_id":"request","locator":locator,"schema_id":1,"package_path": if cfg!(windows) { r"C:\tmp\collection.7z" } else { "/tmp/collection.7z" }});
     let command: CollectionHostCommand = serde_json::from_value(response.clone()).unwrap();
     assert!(command.validate_package("job", "request", &locator).is_ok());
     assert!(command
@@ -430,9 +430,14 @@ fn raw_install_preserves_framework_paths_and_only_peels_confirmed_wrappers() {
         let temp = tempfile::tempdir().unwrap();
         let (package, plan, artifacts) = archive_fixture(&temp, &[(source, b"payload")], vec![]);
         let root = temp.path().join("job");
-        let job =
-            modyssey::collection::stage::stage(&package, &plan, &artifacts, &root, &Default::default())
-                .unwrap();
+        let job = modyssey::collection::stage::stage(
+            &package,
+            &plan,
+            &artifacts,
+            &root,
+            &Default::default(),
+        )
+        .unwrap();
         let staged = &job.members[&plan.members[0].id];
         assert_eq!(staged.files.len(), 1);
         assert_eq!(staged.files[0].staged_path, expected, "source: {source}");
@@ -630,19 +635,34 @@ fn resume_verifies_outputs_and_preserves_modified_old_generations() {
     let temp = tempfile::tempdir().unwrap();
     let (package, plan, artifacts) = archive_fixture(&temp, &[("test.esp", b"original")], vec![]);
     let output = temp.path().join("job");
-    let first =
-        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
-            .unwrap();
-    let second =
-        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
-            .unwrap();
+    let first = modyssey::collection::stage::stage(
+        &package,
+        &plan,
+        &artifacts,
+        &output,
+        &Default::default(),
+    )
+    .unwrap();
+    let second = modyssey::collection::stage::stage(
+        &package,
+        &plan,
+        &artifacts,
+        &output,
+        &Default::default(),
+    )
+    .unwrap();
     let id = &plan.members[0].id;
     assert_eq!(first.members[id].directory, second.members[id].directory);
     let old = output.join(&first.members[id].directory).join("test.esp");
     std::fs::write(&old, b"user modification").unwrap();
-    let repaired =
-        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
-            .unwrap();
+    let repaired = modyssey::collection::stage::stage(
+        &package,
+        &plan,
+        &artifacts,
+        &output,
+        &Default::default(),
+    )
+    .unwrap();
     assert_ne!(first.members[id].directory, repaired.members[id].directory);
     assert_eq!(std::fs::read(&old).unwrap(), b"user modification");
     assert_eq!(
@@ -666,16 +686,26 @@ fn indexed_resume_rejects_split_directory_case_without_losing_old_files() {
         vec![],
     );
     let output = temp.path().join("job");
-    let first =
-        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
-            .unwrap();
+    let first = modyssey::collection::stage::stage(
+        &package,
+        &plan,
+        &artifacts,
+        &output,
+        &Default::default(),
+    )
+    .unwrap();
     let id = &plan.members[0].id;
     let old = output.join(&first.members[id].directory);
     std::fs::create_dir(old.join("meshes")).unwrap();
     std::fs::rename(old.join("Meshes/B.nif"), old.join("meshes/B.nif")).unwrap();
-    let repaired =
-        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
-            .unwrap();
+    let repaired = modyssey::collection::stage::stage(
+        &package,
+        &plan,
+        &artifacts,
+        &output,
+        &Default::default(),
+    )
+    .unwrap();
     assert_ne!(first.members[id].directory, repaired.members[id].directory);
     assert_eq!(std::fs::read(old.join("meshes/B.nif")).unwrap(), b"b");
     assert!(output
@@ -703,7 +733,9 @@ fn staging_refuses_existing_instances_and_records_cancellation() {
     let token = tokio_util::sync::CancellationToken::new();
     token.cancel();
     let output = temp.path().join("cancelled");
-    assert!(modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &token).is_err());
+    assert!(
+        modyssey::collection::stage::stage(&package, &plan, &artifacts, &output, &token).is_err()
+    );
     let journal: Value =
         serde_json::from_slice(&std::fs::read(output.join("collection-job.json")).unwrap())
             .unwrap();

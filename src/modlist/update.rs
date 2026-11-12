@@ -278,7 +278,8 @@ fn status_string(cmp: &VersionCmp) -> &'static str {
 /// Format reports as a human-readable table.
 pub fn format_table(reports: &[UpdateReport]) -> String {
     if reports.is_empty() {
-        return "No tracked installs found. Install a modlist via `modyssey install` first.\n".into();
+        return "No tracked installs found. Install a modlist via `modyssey install` first.\n"
+            .into();
     }
 
     let mut col_name = "Modlist".len();

@@ -9,9 +9,9 @@ use ba2::fo4::{
 };
 use ba2::prelude::*;
 use ba2::CompressionResult;
+use image_dds::ddsfile::Dds;
 use modyssey::modlist::{BSAFileState, CreateBSADirective};
 use modyssey::textures::{process_texture_with_mips, OutputFormat};
-use image_dds::ddsfile::Dds;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -74,19 +74,21 @@ fn execute(action: Action) -> Result<()> {
             output,
         } => {
             fs::create_dir_all(&output)?;
-            let extracted =
-                modyssey::archive::sevenzip::extract_files_case_insensitive(&archive, &files, &output)?;
+            let extracted = modyssey::archive::sevenzip::extract_files_case_insensitive(
+                &archive, &files, &output,
+            )?;
             let expected: BTreeSet<_> = files.iter().map(|s| normalize(s)).collect();
             anyhow::ensure!(extracted == expected.len(), "Incomplete source extraction");
         }
         Action::ExtractBa2 { archive, files } => {
             let wanted = files.keys().map(|s| normalize(s)).collect();
-            let extracted = modyssey::bsa::extract_archive_batch(&archive, &wanted, |name, data| {
-                let output = files
-                    .get(&normalize(name))
-                    .context("Unexpected archive entry")?;
-                write_output(output, &data)
-            })?;
+            let extracted =
+                modyssey::bsa::extract_archive_batch(&archive, &wanted, |name, data| {
+                    let output = files
+                        .get(&normalize(name))
+                        .context("Unexpected archive entry")?;
+                    write_output(output, &data)
+                })?;
             anyhow::ensure!(extracted == files.len(), "Incomplete BA2 source extraction");
         }
         Action::Texture {

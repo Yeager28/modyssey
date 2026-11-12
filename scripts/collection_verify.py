@@ -61,7 +61,7 @@ def main():
                 errors.append('Missing or linked payload: ' + member['directory'] + '/' + relative)
             if file['deployment_root'] == 'game' and not file['excluded']:
                 root_winners[file['staged_path'][5:].casefold()] = file
-        actual = {str(p.relative_to(directory)).casefold() for p in directory.rglob('*') if p.is_file()}
+        actual = {str(p.relative_to(directory)).replace('\\', '/').casefold() for p in directory.rglob('*') if p.is_file()}
         for extra in sorted(actual - expected):
             errors.append('Unexpected payload: ' + member['directory'] + '/' + extra)
         if (index + 1) % 100 == 0:

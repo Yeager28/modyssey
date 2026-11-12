@@ -8,7 +8,7 @@
 use anyhow::bail;
 use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, Write};
+use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 
 /// Held until dropped; the operating system also releases it if Modyssey dies.
