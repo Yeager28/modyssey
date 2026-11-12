@@ -23,6 +23,7 @@ CLAUDE.md
 # Local dev notes and milestone reports (never published)
 /VERDICT.md
 /M0-REPORT.md
+/CI-FIX-REPORT.md
 
 # Generated Python bytecode
 __pycache__/

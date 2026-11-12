@@ -1524,6 +1524,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a working GPU (CI's WARP adapter + FXC cannot compile the BC6H pipeline)"]
     fn batch_results_remain_in_input_order_across_failures_and_formats() {
         let mut bytes = Vec::new();
         SurfaceRgba8::from_image(&RgbaImage::from_pixel(8, 8, image::Rgba([32, 64, 96, 255])))
