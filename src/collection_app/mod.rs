@@ -11,6 +11,8 @@ use crate::collection::{
 };
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
+use std::fs::File;
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::{BufRead, BufReader, Write},
@@ -23,8 +25,6 @@ use std::{
     },
     time::Duration,
 };
-#[cfg(unix)]
-use std::fs::File;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
