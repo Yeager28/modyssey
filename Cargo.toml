@@ -3,7 +3,7 @@ name = "modyssey"
 version = "0.2.9"
 edition = "2021"
 description = "Modyssey — an open-source, multi-game modlist installer (Wabbajack alternative)"
-license = "MIT"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/himanshudbg/modyssey"
 authors = ["Bonkfyre"]
 

@@ -4,20 +4,21 @@
 modlist archives (`.wabbajack`), focused on Dark Souls II: Scholar of the
 First Sin and extensible to more games.
 
-This is a rebranded fork of [CLF3](https://github.com/SulfurNitride/CLF3)
-(MIT) — see [ATTRIBUTION.md](ATTRIBUTION.md). Original code, MIT-licensed;
-the owner may distribute derived builds under any terms MIT permits.
+This is a fork of [CLF3](https://github.com/SulfurNitride/CLF3) by
+SulfurNitride (MIT — see [LICENSE-MIT-CLF3](LICENSE-MIT-CLF3) and
+[ATTRIBUTION.md](ATTRIBUTION.md)) rebranded as **Modyssey**, with a Windows
+port and a Dark Souls II game entry on top. The project as a whole is
+**GPL-3.0-or-later**.
 
-## ⚠️ Hard rule for all contributors
+## Wabbajack reference policy
 
-**Never paste, port, or transliterate Wabbajack C# source code (or any other
-GPL-licensed implementation) into this repository.** This codebase's MIT
-license is only valid because it is an independent implementation of the
-documented `.wabbajack` format. Reference behavioral/format documentation
-(the Wabbajack wiki, format specs) only — never the source of
-`wabbajack-tools/wabbajack`, `modde-rs`, or any other GPL project. If you
-find yourself opening one of those codebases "just to check", stop and restate
-the behavior from documentation instead.
+[Wabbajack](https://github.com/wabbajack-tools/wabbajack) (GPLv3) is the
+reference implementation whose behavior Modyssey ports (the compiler, most
+importantly). **Reading and porting Wabbajack C# source is permitted here**
+because this project is GPL-3.0-or-later — derivatives of a GPL work stay
+GPL. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full policy, including
+the one hard rule that stays: **never automate or scrape Nexus free-tier
+downloads** (browser-open + local-folder watch only).
 
 ## Features
 
@@ -53,5 +54,8 @@ modyssey help                  # everything else
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Copyright © SulfurNitride (CLF3 upstream) and
-Bonkfyre (this fork).
+GPL-3.0-or-later — see [LICENSE](LICENSE). The engine seed is MIT-licensed
+CLF3 code (© SulfurNitride), preserved verbatim in
+[LICENSE-MIT-CLF3](LICENSE-MIT-CLF3); see [ATTRIBUTION.md](ATTRIBUTION.md)
+for the full lineage and [MODLIST-POLICY.md](MODLIST-POLICY.md) for the
+modlist-data policy.
