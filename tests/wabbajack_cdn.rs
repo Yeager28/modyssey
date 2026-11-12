@@ -1,6 +1,6 @@
 //! Local HTTP regressions for interrupted Wabbajack downloads (issue #184).
-use ds2modpack::downloaders::WabbajackCdnDownloader;
-use ds2modpack::hash::compute_bytes_hash;
+use modyssey::downloaders::WabbajackCdnDownloader;
+use modyssey::hash::compute_bytes_hash;
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Cursor, Read, Write},
@@ -279,7 +279,7 @@ async fn matching_hash_does_not_make_a_broken_zip_valid() {
 #[test]
 fn hosted_cli_repairs_preallocated_cache_instead_of_reusing_it() {
     let temp = tempfile::tempdir().unwrap();
-    let cache = temp.path().join("cache/ds2modpack/modlists");
+    let cache = temp.path().join("cache/modyssey/modlists");
     std::fs::create_dir_all(&cache).unwrap();
     let out = cache.join("Fixture.wabbajack");
     let bytes = archive(b"{}");
@@ -288,7 +288,7 @@ fn hosted_cli_repairs_preallocated_cache_instead_of_reusing_it() {
         .set_len(bytes.len() as u64)
         .unwrap();
     let server = Server::new(&bytes, Mode::Good);
-    let mut child = Command::new(env!("CARGO_BIN_EXE_ds2modpack"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_modyssey"))
         .args(["install", &server.url])
         .arg(temp.path().join("downloads"))
         .arg(temp.path().join("install"))
@@ -358,7 +358,7 @@ async fn cancellation_never_publishes_the_partial_file() {
 
 #[tokio::test]
 async fn gui_browser_replaces_same_size_incomplete_cache() {
-    use ds2modpack::modlist::browser::{DownloadMetadata, ModlistBrowser, ModlistLinks, ModlistMetadata};
+    use modyssey::modlist::browser::{DownloadMetadata, ModlistBrowser, ModlistLinks, ModlistMetadata};
     let temp = tempfile::tempdir().unwrap();
     let bytes = archive(b"{}");
     let server = Server::new(&bytes, Mode::Good);

@@ -1,4 +1,4 @@
-# DS2 Modpack by Bonkfyre
+# Modyssey
 
 **Multi-game modpack installer for Windows** — installs Wabbajack-format
 modlist archives (`.wabbajack`), focused on Dark Souls II: Scholar of the
@@ -28,7 +28,7 @@ the behavior from documentation instead.
   files, TransformedTexture with GPU DDS re-encode, CreateBSA).
 - **Game detection**: registry, Steam library manifests, and Heroic/GOG
   discovery for known games (Dark Souls II SOTFS included).
-- **GUI**: egui modlist browser + collections UI (`ds2modpack browser`).
+- **GUI**: egui modlist browser + collections UI (`modyssey browser`).
 - **CLI**: full install pipeline, modlist info, updates, Nexus collection
   planning, MOMW (Modding-OpenMW) installs (Linux-only tooling), Steam login,
   game file index.
@@ -39,16 +39,16 @@ the behavior from documentation instead.
 cargo build --release
 ```
 
-Binary: `target/release/ds2modpack.exe`. Rust stable (MSVC toolchain) with
+Binary: `target/release/modyssey.exe`. Rust stable (MSVC toolchain) with
 Visual Studio Build Tools (MSVC + Windows SDK) required.
 
 ## Usage
 
 ```text
-ds2modpack                       # GUI modlist browser
-ds2modpack info LIST.wabbajack   # inspect a modlist
-ds2modpack install LIST.wabbajack --downloads DIR --output DIR [--game DIR]
-ds2modpack help                  # everything else
+modyssey                       # GUI modlist browser
+modyssey info LIST.wabbajack   # inspect a modlist
+modyssey install LIST.wabbajack --downloads DIR --output DIR [--game DIR]
+modyssey help                  # everything else
 ```
 
 ## License

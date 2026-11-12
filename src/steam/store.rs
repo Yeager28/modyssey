@@ -115,7 +115,7 @@ impl LoginStore {
         Self { dir, vault }
     }
 
-    /// CLF3's usual config directory (`~/.config/clf3`).
+    /// Modyssey's usual config directory (`~/.config/modyssey`).
     pub fn default_location() -> Result<Self> {
         Ok(Self::new(crate::settings::Settings::config_dir()?))
     }

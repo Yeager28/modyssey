@@ -1,6 +1,6 @@
 //! Read-only source/package checks. No game installation or artifact download.
-use ds2modpack::collection::{games, CollectionPackage, CollectionPlan, PlanOptions};
-use ds2modpack::collection_app::{
+use modyssey::collection::{games, CollectionPackage, CollectionPlan, PlanOptions};
+use modyssey::collection_app::{
     acquire::Nexus,
     catalog::{Catalog, Search},
 };
@@ -13,7 +13,7 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
         std::env::var_os("DSMODPACK_GAME_AUDIT_DIR").expect("Set DSMODPACK_GAME_AUDIT_DIR"),
     );
     std::fs::create_dir_all(&root).unwrap();
-    let settings = ds2modpack::settings::Settings::load();
+    let settings = modyssey::settings::Settings::load();
     let nexus = Nexus::new(&settings.nexus_api_key).unwrap();
     let catalog = Catalog::new().unwrap();
     let token = Default::default();
@@ -39,7 +39,7 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
         let mut found = None;
         for entry in candidates {
             let locator =
-                ds2modpack::collection::url::parse_collection_url(&entry.url().unwrap()).unwrap();
+                modyssey::collection::url::parse_collection_url(&entry.url().unwrap()).unwrap();
             let directory = root.join(game.domain);
             let (path, pinned, schema) = nexus.package(&locator, &directory, &token).unwrap();
             let package = CollectionPackage::open(&path).unwrap();
@@ -66,8 +66,8 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
         )
         .unwrap();
         assert!(!plan.blockers.iter().any(|b| b.code == "unsupported_game"));
-        ds2modpack::collection_app::atomic_json(&directory.join("plan.json"), &plan).unwrap();
-        ds2modpack::collection_app::acquire::masterlist_for(
+        modyssey::collection_app::atomic_json(&directory.join("plan.json"), &plan).unwrap();
+        modyssey::collection_app::acquire::masterlist_for(
             game.domain,
             &directory.join("masterlist.yaml"),
             &token,
@@ -94,7 +94,7 @@ fn real_collection_packages_and_game_masterlists_are_reviewable() {
         );
         reports.push(serde_json::json!({"game":game.domain,"collection":plan.name,"slug":pinned.slug,"revision":pinned.revision,"members":plan.members.len(),"package_sha256":package.digest,"blockers":blockers,"member_types":types,"masterlist_sha256":game.masterlist.sha256,"game_launch_tested":false,"installed":false}));
     }
-    ds2modpack::collection_app::atomic_json(&root.join("audit.json"), &reports).unwrap();
+    modyssey::collection_app::atomic_json(&root.join("audit.json"), &reports).unwrap();
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn existing_gts_reviewed_plan_is_unchanged_by_game_registry() {
     let path = std::path::PathBuf::from(
         std::env::var_os("DSMODPACK_GTS_GUI_JOB").expect("Set DSMODPACK_GTS_GUI_JOB"),
     );
-    let prepared = ds2modpack::collection_app::Prepared::restore(&path).unwrap();
+    let prepared = modyssey::collection_app::Prepared::restore(&path).unwrap();
     let package = CollectionPackage::open(&prepared.package).unwrap();
     let rebuilt = CollectionPlan::build(&package, &prepared.options()).unwrap();
     assert_eq!(

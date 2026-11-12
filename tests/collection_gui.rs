@@ -1,10 +1,10 @@
-use ds2modpack::collection::{
+use modyssey::collection::{
     package::digest_file,
     progress::WorkerEvent,
     worker::{execute, WorkerRequest},
     CollectionPackage, CollectionPlan, PlanOptions,
 };
-use ds2modpack::collection_app::{atomic_json, credential_variable};
+use modyssey::collection_app::{atomic_json, credential_variable};
 use serde_json::json;
 use std::{
     collections::BTreeMap,
@@ -154,7 +154,7 @@ fn worker_stdio_and_environment_boundary() {
     let request = fixture(temp.path());
     let request_path = temp.path().join("worker.json");
     atomic_json(&request_path, &request).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_ds2modpack"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_modyssey"))
         .args(["collection", "gui-worker"])
         .arg(&request_path)
         .env("XDG_CONFIG_HOME", temp.path().join("absent-settings"))
@@ -181,7 +181,7 @@ fn worker_stdio_and_environment_boundary() {
     let request = fixture(temp.path());
     let path = temp.path().join("worker.json");
     atomic_json(&path, &request).unwrap();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_ds2modpack"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_modyssey"))
         .args(["collection", "gui-worker"])
         .arg(path)
         .stdin(Stdio::piped())
@@ -199,7 +199,7 @@ fn worker_stdio_and_environment_boundary() {
 
 #[test]
 fn committed_result_recovers_only_for_its_job_and_unchanged_files() {
-    use ds2modpack::collection::worker::{read_json, recover};
+    use modyssey::collection::worker::{read_json, recover};
     let temp = tempfile::tempdir().unwrap();
     let request = fixture(temp.path());
     execute(&request, &Default::default(), &|_| {}).unwrap();

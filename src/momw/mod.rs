@@ -1,6 +1,6 @@
 //! Modding-OpenMW (modding-openmw.com) list support.
 //!
-//! CLF3 reads the lists the site publishes (`/api/lists/<slug>` and
+//! Modyssey reads the lists the site publishes (`/api/lists/<slug>` and
 //! `/api/cfg-generator/<slug>`), plans the install, and produces a Fluorine
 //! "Morrowind (OpenMW)" instance with one mod per OpenMW data directory.
 //!

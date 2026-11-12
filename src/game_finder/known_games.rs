@@ -1,6 +1,6 @@
 //! Known games configuration
 //!
-//! Contains metadata for games that CLF3 supports, including:
+//! Contains metadata for games that Modyssey supports, including:
 //! - Steam App ID
 //! - My Games folder name (Documents/My Games/*)
 //! - AppData/Local folder name
@@ -32,7 +32,7 @@ pub struct KnownGame {
     pub wabbajack_type: Option<&'static str>,
 }
 
-/// All known games that CLF3 supports
+/// All known games that Modyssey supports
 pub const KNOWN_GAMES: &[KnownGame] = &[
     // Bethesda Games
     KnownGame {

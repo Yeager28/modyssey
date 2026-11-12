@@ -1,10 +1,10 @@
-# Contributing to DS2 Modpack by Bonkfyre
+# Contributing to Modyssey
 
 ## The one hard rule
 
 **This repository must remain an independent implementation.**
 
-This codebase derives from CLF3 (MIT, © SulfurNitride), which is itself an
+This codebase derives from Modyssey (MIT, © SulfurNitride), which is itself an
 independent Rust implementation of the documented `.wabbajack` modlist
 format. Its MIT license — and this project's freedom to be distributed under
 any terms the owner chooses — depends on that independence.

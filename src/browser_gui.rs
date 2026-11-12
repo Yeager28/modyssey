@@ -1,6 +1,6 @@
 //! egui-based modlist browser GUI.
 //!
-//! Launched via `clf3 browser`. Shows a scrollable list of modlist cards with
+//! Launched via `modyssey browser`. Shows a scrollable list of modlist cards with
 //! lazy-loaded thumbnail images, search/filter controls, and a Settings tab
 //! for managing API keys, GPU selection, and default directories.
 
@@ -30,14 +30,14 @@ const ROW_HEIGHT: f32 = 120.0;
 pub fn launch_browser() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("DS2 Modpack by Bonkfyre")
+            .with_title("Modyssey")
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([800.0, 600.0]),
         ..Default::default()
     };
 
     eframe::run_native(
-        "ds2modpack_browser",
+        "modyssey_browser",
         options,
         Box::new(|cc| {
             // Install image loaders so egui_extras can decode PNG/JPEG/etc.
@@ -187,7 +187,7 @@ impl BrowserApp {
 
         let image_cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("ds2modpack")
+            .join("modyssey")
             .join("images");
         let _ = std::fs::create_dir_all(&image_cache_dir);
 
@@ -215,7 +215,7 @@ impl BrowserApp {
         let settings = Settings::load();
         let downloads_dir = settings.default_downloads_dir.clone();
         let install_dir = settings.default_install_dir.clone();
-        let collection_games = ds2modpack::collection::games::PROFILES
+        let collection_games = modyssey::collection::games::PROFILES
             .iter()
             .filter_map(|profile| {
                 detected
@@ -628,14 +628,14 @@ impl BrowserApp {
     }
 
     /// Shared command builder — both modlist-URL and local-path callers
-    /// produce the same `clf3 install <src> <downloads> <install>` shape.
+    /// produce the same `modyssey install <src> <downloads> <install>` shape.
     fn build_install_command(&self, source: &str) -> Option<String> {
         if self.downloads_dir.is_empty() || self.install_dir.is_empty() {
             return None;
         }
         let exe = std::env::current_exe()
             .map(|p| p.display().to_string())
-            .unwrap_or_else(|_| "ds2modpack".into());
+            .unwrap_or_else(|_| "modyssey".into());
         let mut parts = vec![
             shell_quote(&exe),
             "install".to_string(),
@@ -653,7 +653,7 @@ impl BrowserApp {
         if self.downloads_dir.is_empty() || self.install_dir.is_empty() {
             return None;
         }
-        let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("ds2modpack"));
+        let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("modyssey"));
         let mut args = vec![
             "install".into(),
             source.into(),

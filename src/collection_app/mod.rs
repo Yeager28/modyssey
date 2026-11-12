@@ -77,7 +77,7 @@ pub enum Event {
 pub fn cache_root() -> PathBuf {
     dirs::cache_dir()
         .unwrap_or_else(std::env::temp_dir)
-        .join("ds2modpack/collections")
+        .join("modyssey/collections")
 }
 pub fn recent_path() -> PathBuf {
     cache_root().join("last-gui-job.json")

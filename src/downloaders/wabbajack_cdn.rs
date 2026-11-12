@@ -197,7 +197,7 @@ impl WabbajackCdnDownloader {
         // Never expose an unfinished download under its final cache name.
         // TempPath removes partial data on error or async cancellation.
         let temporary = tempfile::Builder::new()
-            .prefix(".ds2modpack-download-")
+            .prefix(".modyssey-download-")
             .suffix(".part")
             .tempfile_in(parent)?;
         temporary.as_file().set_len(total_size)?;

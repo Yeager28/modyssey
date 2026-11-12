@@ -9,7 +9,7 @@
   "total_size_bytes": 16197210373,
   "assets_size_bytes": 0,
   "observed_utc": "2026-09-14",
-  "evidence": "Pinned Nexus revision package and all member archives acquired using the saved local CLF3 Nexus key, followed by real installer replay and isolated portable-instance publication. Archive sizes/MD5, installed output SHA-256, plugin/master order, source-game isolation and credential containment were verified. No keys or signed URLs are included.",
+  "evidence": "Pinned Nexus revision package and all member archives acquired using the saved local Modyssey Nexus key, followed by real installer replay and isolated portable-instance publication. Archive sizes/MD5, installed output SHA-256, plugin/master order, source-game isolation and credential containment were verified. No keys or signed URLs are included.",
   "package_acquired": true,
   "installation_tested": true,
   "package_sha256": "9c0f66fd54ef27f7dac93c3dc00ae04a627f2566b7d8feff6befb547d6ef9945",

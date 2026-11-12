@@ -42,7 +42,7 @@ pub fn prompt_unsupported_formats(unsupported: &HashMap<String, Vec<String>>) ->
     println!("║           UNSUPPORTED TEXTURE FORMATS DETECTED              ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
-    println!("The following texture formats are not yet supported by DS2 Modpack:\n");
+    println!("The following texture formats are not yet supported by Modyssey:\n");
 
     for (format, paths) in unsupported {
         println!("  Format: {} ({} textures)", format, paths.len());
@@ -57,8 +57,8 @@ pub fn prompt_unsupported_formats(unsupported: &HashMap<String, Vec<String>>) ->
     }
 
     println!("╔══════════════════════════════════════════════════════════════╗");
-    println!("║  Please report these formats to the DS2 Modpack developers!        ║");
-    println!("║  https://github.com/himanshudbg/ds2-modpack-app/issues                   ║");
+    println!("║  Please report these formats to the Modyssey developers!        ║");
+    println!("║  https://github.com/himanshudbg/modyssey/issues                   ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
     println!("If you continue, these textures will use BC1 fallback (may look wrong).\n");

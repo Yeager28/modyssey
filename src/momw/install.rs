@@ -55,7 +55,7 @@ pub struct StageOutcome {
 pub fn default_downloads_dir() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("ds2modpack")
+        .join("modyssey")
         .join("momw-downloads"))
 }
 

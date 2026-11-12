@@ -1,9 +1,9 @@
 //! Post-install manifest written next to a finished modlist install.
 //!
-//! After a successful `clf3 install`, we drop a small `.ds2modpack-install.json`
+//! After a successful `modyssey install`, we drop a small `.modyssey-install.json`
 //! file inside the install dir. It records which Wabbajack modlist + version
-//! we installed and where its downloads live, so later runs of `clf3 modlist
-//! check` / `clf3 modlist update` can offer to refresh the install.
+//! we installed and where its downloads live, so later runs of `modyssey modlist
+//! check` / `modyssey modlist update` can offer to refresh the install.
 //!
 //! ## Schema
 //!
@@ -34,11 +34,11 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-/// Current on-disk schema version for `.ds2modpack-install.json`.
+/// Current on-disk schema version for `.modyssey-install.json`.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// Filename of the manifest inside an install directory.
-pub const MANIFEST_FILENAME: &str = ".ds2modpack-install.json";
+pub const MANIFEST_FILENAME: &str = ".modyssey-install.json";
 
 /// Manifest written into an install directory after a successful install.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,7 +46,7 @@ pub struct InstallManifest {
     /// Schema version. Currently `1` — see [`CURRENT_SCHEMA_VERSION`].
     pub schema_version: u32,
 
-    /// Gallery `machine_name` for this modlist. May be empty if CLF3 was
+    /// Gallery `machine_name` for this modlist. May be empty if Modyssey was
     /// invoked on a local file with no gallery match.
     #[serde(default)]
     pub machine_name: String,
@@ -66,7 +66,7 @@ pub struct InstallManifest {
     /// RFC3339 timestamp of when the install finished.
     pub installed_at: String,
 
-    /// Directory CLF3 was told to use for downloaded archives — needed when
+    /// Directory Modyssey was told to use for downloaded archives — needed when
     /// re-running an update so we reuse the same cache.
     pub downloads_dir: PathBuf,
 

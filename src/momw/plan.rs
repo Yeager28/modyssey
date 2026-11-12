@@ -72,7 +72,7 @@ pub enum SourceKind {
     GoogleDrive {
         url: String,
     },
-    /// A host CLF3 has no downloader for yet.
+    /// A host Modyssey has no downloader for yet.
     Other {
         url: String,
     },

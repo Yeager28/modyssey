@@ -1,7 +1,7 @@
 //! Getting a list entry's archive onto disk.
 //!
 //! Nexus files go through the host (Fluorine authorizes them, so no
-//! credentials reach CLF3) or, on the command line, the user's own Premium API
+//! credentials reach Modyssey) or, on the command line, the user's own Premium API
 //! key. Everything else is a plain URL, Mega link or GitLab project.
 
 use super::stage::Wrapper;
@@ -48,9 +48,9 @@ impl Fetcher {
             http: HttpClient::new()?,
             api: reqwest::Client::builder()
                 .user_agent(concat!(
-                    "ds2modpack/",
+                    "modyssey/",
                     env!("CARGO_PKG_VERSION"),
-                    " (+https://github.com/himanshudbg/ds2-modpack-app)"
+                    " (+https://github.com/himanshudbg/modyssey)"
                 ))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?,

@@ -176,7 +176,7 @@ pub async fn download_latest(dest_root: Option<PathBuf>) -> Result<PathBuf> {
     );
 
     let client = reqwest::Client::builder()
-        .user_agent("ds2modpack")
+        .user_agent("modyssey")
         .build()
         .context("Failed to build reqwest client")?;
 
@@ -237,7 +237,7 @@ struct GitHubAsset {
 async fn fetch_latest_release() -> Result<GitHubRelease> {
     let url = format!("https://api.github.com/repos/{}/releases/latest", REPO);
     let client = reqwest::Client::builder()
-        .user_agent("ds2modpack")
+        .user_agent("modyssey")
         .build()
         .context("Failed to build reqwest client")?;
     let release: GitHubRelease = client

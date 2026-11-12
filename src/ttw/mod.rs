@@ -482,7 +482,7 @@ where
 fn ttw_installer_cache_path() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("ds2modpack")
+        .join("modyssey")
         .join("bin")
         .join(TTW_INSTALLER_BINARY)
 }
@@ -504,7 +504,7 @@ fn find_ttw_installer(explicit_path: Option<&Path>) -> Result<PathBuf> {
     let candidates = [
         // In PATH
         which::which(TTW_INSTALLER_BINARY).ok(),
-        // Relative to clf3
+        // Relative to modyssey
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.join(TTW_INSTALLER_BINARY))),
@@ -547,7 +547,7 @@ fn download_ttw_installer() -> Result<PathBuf> {
     info!("Fetching release info from: {}", api_url);
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent("ds2modpack")
+        .user_agent("modyssey")
         .build()
         .context("Failed to create HTTP client")?;
 
@@ -726,7 +726,7 @@ pub fn check_ttw_installer_update() -> Result<Option<String>> {
     );
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent("ds2modpack")
+        .user_agent("modyssey")
         .build()?;
 
     let response = client.get(&api_url).send()?;

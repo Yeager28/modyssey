@@ -750,8 +750,8 @@ impl Installer {
             crate::installer::log_detail("Installation complete!");
         }
 
-        // Drop a `.clf3-install.json` manifest into the output dir so
-        // `clf3 modlist check` / `clf3 modlist update` can find this install
+        // Drop a `.modyssey-install.json` manifest into the output dir so
+        // `modyssey modlist check` / `modyssey modlist update` can find this install
         // later. Only do this on clean success — a half-broken install
         // shouldn't claim to be a tracked install.
         let install_succeeded = stats.archives_manual == 0
@@ -768,7 +768,7 @@ impl Installer {
         Ok(stats)
     }
 
-    /// Persist `.clf3-install.json` next to the install + mirror it into
+    /// Persist `.modyssey-install.json` next to the install + mirror it into
     /// settings. Pulls the modlist `name` and `installed_version` from the
     /// state DB metadata populated during import.
     fn write_post_install_manifest(&self) -> Result<()> {

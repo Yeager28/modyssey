@@ -1440,7 +1440,7 @@ mod tests {
 
         // ES DDI Patch.7z — 1,686 bytes, single file on a multi-file page
         let url = "https://www.loverslab.com/files/file/2438-estrus-chaurus-spider-addon-%E2%95%B2-%E2%80%A2%CC%80-%CF%89-%E2%80%A2%CC%81-%E2%95%B1/?do=download&r=656247";
-        let output = std::env::temp_dir().join("ds2modpack_ll_test_es_ddi_patch.7z");
+        let output = std::env::temp_dir().join("modyssey_ll_test_es_ddi_patch.7z");
 
         let _ = std::fs::remove_file(&output);
 
@@ -1488,7 +1488,7 @@ mod tests {
         // URL has NO r= parameter, just the page — downloader must scrape + match
         let url = "https://www.loverslab.com/files/file/12760-creature-overhaul/?do=download";
         let expected_name = "CO More Creatures 1.8.2 (With Hostile Creatures) (1).rar";
-        let output = std::env::temp_dir().join("ds2modpack_ll_test_co_hostile.rar");
+        let output = std::env::temp_dir().join("modyssey_ll_test_co_hostile.rar");
 
         let _ = std::fs::remove_file(&output);
 

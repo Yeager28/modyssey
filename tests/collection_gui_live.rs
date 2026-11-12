@@ -5,7 +5,7 @@
 #[test]
 #[ignore = "queries the public Nexus catalog and downloads one thumbnail; no account is used"]
 fn public_catalog_browses_games_search_and_pages_without_credentials() {
-    use ds2modpack::collection_app::catalog::{Catalog, Search, Sort};
+    use modyssey::collection_app::catalog::{Catalog, Search, Sort};
     let catalog = Catalog::new().unwrap();
     let token = Default::default();
     let games = catalog.games(&token).unwrap();
@@ -71,8 +71,8 @@ fn public_catalog_browses_games_search_and_pages_without_credentials() {
 #[test]
 #[ignore = "uses the locally saved Nexus account and a caller-supplied pinned plan"]
 fn saved_account_downloads_the_exact_pinned_archive() {
-    use ds2modpack::collection::{worker::read_json, CollectionPlan};
-    use ds2modpack::collection_app::acquire::{verify_archive, Nexus};
+    use modyssey::collection::{worker::read_json, CollectionPlan};
+    use modyssey::collection_app::acquire::{verify_archive, Nexus};
     let path = std::path::PathBuf::from(
         std::env::var_os("DSMODPACK_COLLECTION_LIVE_PLAN").expect("Supply a pinned plan path"),
     );
@@ -84,7 +84,7 @@ fn saved_account_downloads_the_exact_pinned_archive() {
         .filter(|a| a.source_type == "nexus" && a.expected_size.is_some_and(|s| s >= 8))
         .min_by_key(|a| a.expected_size.unwrap())
         .expect("Plan needs an exact Nexus artifact");
-    let settings = ds2modpack::settings::Settings::load();
+    let settings = modyssey::settings::Settings::load();
     let nexus = Nexus::new(&settings.nexus_api_key).unwrap();
     assert!(
         nexus.premium().unwrap(),

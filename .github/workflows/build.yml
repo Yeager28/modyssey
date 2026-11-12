@@ -63,7 +63,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: clf3-linux-x86_64-${{ github.ref_name }}
+          name: modyssey-linux-x86_64-${{ github.ref_name }}
           path: dist/*
 
   publish-release:
@@ -76,19 +76,19 @@ jobs:
       - name: Download packaged assets
         uses: actions/download-artifact@v4
         with:
-          name: clf3-linux-x86_64-${{ github.ref_name }}
+          name: modyssey-linux-x86_64-${{ github.ref_name }}
           path: dist
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: CLF3 ${{ github.ref_name }}
+          name: Modyssey ${{ github.ref_name }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            dist/clf3-linux-x86_64-*.tar.gz
-            dist/clf3-linux-x86_64-*.zip
-            dist/clf3-linux-x64.zip
+            dist/modyssey-linux-x86_64-*.tar.gz
+            dist/modyssey-linux-x86_64-*.zip
+            dist/modyssey-linux-x64.zip
             dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

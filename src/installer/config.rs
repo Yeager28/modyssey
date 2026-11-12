@@ -131,16 +131,16 @@ pub struct InstallConfig {
     pub extract_strategy: ExtractStrategy,
 
     /// Optional gallery `machine_name` for this modlist. When set, the
-    /// installer writes a `.clf3-install.json` manifest and updates the
-    /// settings record on success so `clf3 modlist check` can find it.
+    /// installer writes a `.modyssey-install.json` manifest and updates the
+    /// settings record on success so `modyssey modlist check` can find it.
     pub machine_name: Option<String>,
 
     /// Optional URL the .wabbajack file was originally downloaded from.
-    /// Recorded in the post-install manifest so `clf3 modlist update` can
+    /// Recorded in the post-install manifest so `modyssey modlist update` can
     /// fall back to it when the gallery entry has moved.
     pub wabbajack_url: Option<String>,
 
-    /// Host-owned resolver used by Fluorine. When present, CLF3 never reads
+    /// Host-owned resolver used by Fluorine. When present, Modyssey never reads
     /// Nexus credentials and never persists the returned signed URLs.
     pub hosted_download_provider: Option<Arc<dyn HostedDownloadProvider>>,
 
@@ -183,7 +183,7 @@ impl std::fmt::Debug for InstallConfig {
 
 impl InstallConfig {
     /// Get the path to the state database
-    /// Uses local cache directory (~/.cache/clf3/) to avoid network filesystem issues
+    /// Uses local cache directory (~/.cache/modyssey/) to avoid network filesystem issues
     pub fn db_path(&self) -> PathBuf {
         // Use modlist name for the database filename
         let modlist_name = self
@@ -195,7 +195,7 @@ impl InstallConfig {
         // Store in local cache directory to avoid CIFS/NFS locking issues
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("ds2modpack");
+            .join("modyssey");
 
         // Create cache directory if it doesn't exist
         let _ = std::fs::create_dir_all(&cache_dir);

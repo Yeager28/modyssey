@@ -1,6 +1,6 @@
 # Attribution
 
-This project, **DS2 Modpack by Bonkfyre**, is a rebranded fork/derivative of
+This project, **Modyssey**, is a rebranded fork/derivative of
 **CLF3** by **SulfurNitride** — <https://github.com/SulfurNitride/CLF3> —
 licensed under the MIT License (see [LICENSE](LICENSE)).
 
@@ -17,9 +17,9 @@ licensed under the MIT License (see [LICENSE](LICENSE)).
 
 ## What was changed from upstream
 
-- Project identity: package/binary/lib renamed `clf3` → `ds2modpack`; window
+- Project identity: package/binary/lib renamed `modyssey` → `modyssey`; window
   titles, CLI strings, user agents, data directories, keyring service name
-  and log filenames rebranded to "DS2 Modpack by Bonkfyre".
+  and log filenames rebranded to "Modyssey".
 - Windows portability: Linux-only code paths (flock-based install locks,
   `set_permissions(..., 0o755)`, signal handlers, symlink spill) are gated
   behind `#[cfg(unix)]` with Windows fallbacks (pid-file locks, plain copies).

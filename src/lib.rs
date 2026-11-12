@@ -1,4 +1,4 @@
-//! DS2 Modpack by Bonkfyre — multi-game modpack installer.
+//! Modyssey — an open-source, multi-game modlist installer (Wabbajack alternative).
 //!
 //! Derivative work of CLF3 (MIT, © SulfurNitride) — see ATTRIBUTION.md and
 //! LICENSE in the repository root.

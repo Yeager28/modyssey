@@ -1,5 +1,5 @@
 //! Cross-game conformance uses small synthetic payloads, never user installs.
-use ds2modpack::collection::{
+use modyssey::collection::{
     games::{self, GameProfile},
     package::digest_file,
     publish::{publish, PublicationOptions},
@@ -7,7 +7,7 @@ use ds2modpack::collection::{
     worker::{execute, recover, WorkerRequest},
     CollectionPackage, CollectionPlan, PlanOptions,
 };
-use ds2modpack::collection_app::{atomic_json, Inputs};
+use modyssey::collection_app::{atomic_json, Inputs};
 use serde_json::json;
 use std::{
     collections::BTreeMap,
@@ -244,7 +244,7 @@ fn wrong_game_and_cross_game_ini_are_refused_before_installation() {
         ..Default::default()
     };
     write(&inputs.game.join("SkyrimSE.exe"), b"wrong game");
-    let error = ds2modpack::collection_app::prepare(inputs, None, "", &Default::default())
+    let error = modyssey::collection_app::prepare(inputs, None, "", &Default::default())
         .err()
         .expect("wrong source game must fail");
     assert!(format!("{error:#}").contains("Fallout4.exe"));
@@ -427,7 +427,7 @@ fn unimplemented_adapters_remain_blocked_with_game_specific_reasons() {
 
 #[test]
 fn hosted_installation_cancels_resumes_and_verifies_every_game_adapter() {
-    use ds2modpack::collection::host::install_local;
+    use modyssey::collection::host::install_local;
     for game in games::PROFILES {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path();
@@ -590,7 +590,7 @@ fn a_vr_collection_is_refused_on_the_flat_games_folder() {
     // A Skyrim SE folder has SkyrimSE.exe, not SkyrimVR.exe.
     let wrong = root.join("flat-game");
     write(&wrong.join("SkyrimSE.exe"), b"flat game");
-    let err = ds2modpack::collection::publish::publish(
+    let err = modyssey::collection::publish::publish(
         &root.join("stage"),
         &wrong,
         &root.join("out"),

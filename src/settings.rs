@@ -1,6 +1,6 @@
-//! Settings management for CLF3
+//! Settings management for Modyssey
 //!
-//! Stores user preferences in ~/.config/clf3/settings.json
+//! Stores user preferences in ~/.config/modyssey/settings.json
 
 // Used by lib crate
 #![allow(dead_code)]
@@ -29,8 +29,8 @@ pub struct BrowserListPaths {
     pub install_dir: String,
 }
 
-/// Mirror of `.clf3-install.json` in settings, keyed by `machine_name`. Lets
-/// `clf3 modlist check` find installs that aren't currently mounted (i.e.
+/// Mirror of `.modyssey-install.json` in settings, keyed by `machine_name`. Lets
+/// `modyssey modlist check` find installs that aren't currently mounted (i.e.
 /// when the install dir is on removable storage or temporarily unavailable).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct InstalledModlistRecord {
@@ -59,7 +59,7 @@ pub struct InstalledModlistRecord {
     pub install_dir: String,
 }
 
-/// User settings for CLF3
+/// User settings for Modyssey
 ///
 /// `nexus_api_key` and `loverslab_password` are held in the system keyring,
 /// not in settings.json: `load` fills them in and `save` moves them out. If no
@@ -139,7 +139,7 @@ pub struct Settings {
     pub browser_list_paths: HashMap<String, BrowserListPaths>,
 
     /// Records of successful installs keyed by machine_name. Mirrors the
-    /// per-install `.clf3-install.json` so we can find installs whose dir
+    /// per-install `.modyssey-install.json` so we can find installs whose dir
     /// isn't currently accessible (e.g. external drive unplugged).
     #[serde(default)]
     pub installed_modlists: HashMap<String, InstalledModlistRecord>,
@@ -177,11 +177,11 @@ impl std::fmt::Debug for Settings {
 }
 
 impl Settings {
-    /// Get the config directory path (~/.config/clf3)
+    /// Get the config directory path (~/.config/modyssey)
     pub(crate) fn config_dir() -> Result<PathBuf> {
         let config_dir = dirs::config_dir()
             .context("Could not determine config directory")?
-            .join("ds2modpack");
+            .join("modyssey");
 
         Ok(config_dir)
     }
@@ -362,7 +362,7 @@ mod tests {
             ttw_mpi_path: String::new(),
             fallout3_path: String::new(),
             ttw_output_path: String::new(),
-            patch_cache_dir: "/home/user/.cache/ds2modpack/patches".into(),
+            patch_cache_dir: "/home/user/.cache/modyssey/patches".into(),
             loverslab_email: String::new(),
             loverslab_password: String::new(),
             browser_game_filter: String::new(),

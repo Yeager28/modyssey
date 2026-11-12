@@ -1,4 +1,4 @@
-//! Discovery + version-check logic for `clf3 modlist check` / `clf3 modlist
+//! Discovery + version-check logic for `modyssey modlist check` / `modyssey modlist
 //! update`.
 //!
 //! Two sources of truth for "what's installed":
@@ -7,10 +7,10 @@
 //!    isn't currently accessible.
 //! 2. `Settings::browser_list_paths` — the GUI saves a per-machine_name path
 //!    pair (downloads + install) when the user picks paths. We use the
-//!    `install_dir` here to locate any `.clf3-install.json` written by the
+//!    `install_dir` here to locate any `.modyssey-install.json` written by the
 //!    installer.
 //!
-//! On-disk `.clf3-install.json` files (when present) are authoritative for
+//! On-disk `.modyssey-install.json` files (when present) are authoritative for
 //! version: they get updated even when the settings file fails to write.
 
 #![allow(dead_code)] // public surface used by binary crate
@@ -79,12 +79,12 @@ fn empty_or_path(s: &str) -> Option<PathBuf> {
     }
 }
 
-/// Discover every install CLF3 knows about.
+/// Discover every install Modyssey knows about.
 ///
 /// For each `machine_name` we've seen (in either settings field), prefer the
-/// on-disk `.clf3-install.json` over the settings mirror. Installs whose dir
+/// on-disk `.modyssey-install.json` over the settings mirror. Installs whose dir
 /// is missing fall back to the settings record so they still appear in
-/// `clf3 modlist check`.
+/// `modyssey modlist check`.
 pub fn discover_installs(settings: &Settings) -> Vec<InstallRecord> {
     let mut by_machine: HashMap<String, InstallRecord> = HashMap::new();
 
@@ -97,7 +97,7 @@ pub fn discover_installs(settings: &Settings) -> Vec<InstallRecord> {
     }
 
     // Second pass: the browser path map gives us additional install_dir
-    // candidates. Try to read `.clf3-install.json` from each one; that's the
+    // candidates. Try to read `.modyssey-install.json` from each one; that's the
     // freshest record. Skip dirs whose machine_name is already covered by an
     // on-disk manifest.
     for (machine_name, paths) in &settings.browser_list_paths {
@@ -179,7 +179,7 @@ pub fn resolve_query(
     let matches: Vec<&ModlistMetadata> = gallery.iter().filter(|m| m.matches_query(q)).collect();
     match matches.len() {
         0 => Err(anyhow!(
-            "No modlist matches '{}'. Try `ds2modpack browser` to see available modlists.",
+            "No modlist matches '{}'. Try `modyssey browser` to see available modlists.",
             q
         )),
         1 => Ok(matches[0].machine_name.clone()),
@@ -217,7 +217,7 @@ pub struct UpdateReport {
     /// `true` for `newer` or `different`. Pre-computed so a JSON consumer
     /// doesn't have to re-derive the rule.
     pub update_available: bool,
-    /// True if the install dir's `.clf3-install.json` was readable.
+    /// True if the install dir's `.modyssey-install.json` was readable.
     pub from_manifest: bool,
 }
 
@@ -278,7 +278,7 @@ fn status_string(cmp: &VersionCmp) -> &'static str {
 /// Format reports as a human-readable table.
 pub fn format_table(reports: &[UpdateReport]) -> String {
     if reports.is_empty() {
-        return "No tracked installs found. Install a modlist via `ds2modpack install` first.\n".into();
+        return "No tracked installs found. Install a modlist via `modyssey install` first.\n".into();
     }
 
     let mut col_name = "Modlist".len();
@@ -345,7 +345,7 @@ pub fn format_table(reports: &[UpdateReport]) -> String {
     let updatable = reports.iter().filter(|r| r.update_available).count();
     if updatable > 0 {
         out.push_str(&format!(
-            "\n{} update(s) available. Run `ds2modpack modlist update <machine_name>` to apply.\n",
+            "\n{} update(s) available. Run `modyssey modlist update <machine_name>` to apply.\n",
             updatable
         ));
     } else {

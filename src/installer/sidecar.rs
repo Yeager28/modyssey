@@ -1,11 +1,11 @@
 //! Sidecar hash cache for BSA/DDS skip-on-update
 //!
-//! After successfully creating a BSA or transforming a DDS texture, a `.ds2modpack-hash`
+//! After successfully creating a BSA or transforming a DDS texture, a `.modyssey-hash`
 //! sidecar file is written next to the output containing the directive's expected
 //! hash and the output file's actual size. On subsequent runs, if the sidecar
 //! matches the directive and the file size is correct, the work is skipped.
 //!
-//! BSA archives also get a `.ds2modpack-manifest` companion that stores per-file hashes.
+//! BSA archives also get a `.modyssey-manifest` companion that stores per-file hashes.
 //! On update, this allows partial reuse: unchanged files are extracted from the
 //! existing BSA instead of re-downloading their source archives.
 
@@ -14,8 +14,8 @@ use std::fs;
 use std::io::BufRead;
 use std::path::Path;
 
-const SIDECAR_EXT: &str = "ds2modpack-hash";
-const MANIFEST_EXT: &str = "ds2modpack-manifest";
+const SIDECAR_EXT: &str = "modyssey-hash";
+const MANIFEST_EXT: &str = "modyssey-manifest";
 // Older output receipts may describe flattened cubemaps, wrong mip counts,
 // incomplete archives, or the old archive-wide BA2 compression policy.
 const OUTPUT_RECIPE: u32 = 2;

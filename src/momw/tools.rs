@@ -94,7 +94,7 @@ impl ToolSet {
 pub fn default_tools_dir() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("ds2modpack")
+        .join("modyssey")
         .join("tools")
         .join("momw-tools-pack"))
 }
@@ -116,9 +116,9 @@ pub async fn provision(dir: &Path, force: bool) -> Result<ToolSet> {
     let result = async {
         let response = reqwest::Client::builder()
             .user_agent(concat!(
-                "ds2modpack/",
+                "modyssey/",
                 env!("CARGO_PKG_VERSION"),
-                " (+https://github.com/himanshudbg/ds2-modpack-app)"
+                " (+https://github.com/himanshudbg/modyssey)"
             ))
             .build()?
             .get(TOOLS_PACK_URL)

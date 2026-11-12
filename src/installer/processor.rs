@@ -497,7 +497,7 @@ pub struct ProcessStats {
 /// Persistent SQLite-backed store for patch basis entries.
 ///
 /// Stores `basis_key -> (local_path, size, quick_hash)` scoped per modlist.
-/// Lives in the same `~/.cache/clf3/extraction_cache.db` used by `BsaCache`.
+/// Lives in the same `~/.cache/modyssey/extraction_cache.db` used by `BsaCache`.
 pub(crate) struct PatchBasisStore {
     conn: Mutex<rusqlite::Connection>,
     modlist_name: String,
@@ -725,7 +725,7 @@ impl<'a> ProcessContext<'a> {
         // Use local cache directory to avoid CIFS/NFS locking issues
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("ds2modpack");
+            .join("modyssey");
         let _ = std::fs::create_dir_all(&cache_dir);
         let cache_path = cache_dir.join("extraction_cache.db");
         let extraction_cache =
@@ -1172,7 +1172,7 @@ fn is_bsa_file(path: &str) -> bool {
 /// Get the working folder for BSA files extracted from archives
 /// Stays in downloads_dir since BSA files can be very large (gigabytes)
 fn get_bsa_working_dir(downloads_dir: &Path) -> PathBuf {
-    downloads_dir.join(".ds2modpack_bsa_working")
+    downloads_dir.join(".modyssey_bsa_working")
 }
 
 /// Generate a stable filename for a BSA in the working folder
@@ -1590,7 +1590,7 @@ fn cleanup_extra_files(db: &ModlistDb, ctx: &ProcessContext) -> Result<()> {
             if entry
                 .path()
                 .extension()
-                .map(|e| e == "ds2modpack-hash" || e == "ds2modpack-manifest")
+                .map(|e| e == "modyssey-hash" || e == "modyssey-manifest")
                 .unwrap_or(false)
             {
                 continue;
@@ -1883,7 +1883,7 @@ fn read_nested_texture_source(
         return Ok(data);
     }
     let nested = tempfile::Builder::new()
-        .prefix("ds2modpack_texture_archive_")
+        .prefix("modyssey_texture_archive_")
         .tempfile_in(temp_root)?;
     fs::write(nested.path(), data)?;
     read_nested_texture_source(nested.path(), remaining, temp_root)
@@ -2107,7 +2107,7 @@ fn process_transformed_texture(
                     };
                     if let Some(data) = bsa_data {
                         if let Ok(temp_bsa) = tempfile::Builder::new()
-                            .prefix("ds2modpack_texture_archive_")
+                            .prefix("modyssey_texture_archive_")
                             .tempfile_in(&ctx.config.output_dir)
                         {
                             if fs::write(temp_bsa.path(), &data).is_ok() {

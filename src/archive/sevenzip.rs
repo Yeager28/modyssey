@@ -21,7 +21,7 @@
 //! # Usage
 //!
 //! ```ignore
-//! use ds2modpack::archive::sevenzip::{list_archive, extract_file_case_insensitive, extract_all};
+//! use modyssey::archive::sevenzip::{list_archive, extract_file_case_insensitive, extract_all};
 //!
 //! let entries = list_archive("archive.7z")?;
 //! let data = extract_file_case_insensitive("archive.7z", "path/in/archive.txt")?;

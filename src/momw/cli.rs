@@ -57,7 +57,7 @@ pub enum MomwCommand {
     },
     /// Download the MOMW Tools Pack binaries the post-install steps use.
     Tools {
-        /// Where to unpack them (default: CLF3's data directory).
+        /// Where to unpack them (default: Modyssey's data directory).
         #[arg(long)]
         dir: Option<PathBuf>,
         /// Download again even if the tools are already present.
@@ -103,7 +103,7 @@ pub enum MomwCommand {
         /// The data directory that receives the generated files.
         #[arg(long)]
         output_dir: PathBuf,
-        /// Tools directory (default: CLF3's data directory).
+        /// Tools directory (default: Modyssey's data directory).
         #[arg(long)]
         tools_dir: Option<PathBuf>,
         /// Directory for the tools' own settings and derived configs.
@@ -160,11 +160,11 @@ pub enum MomwCommand {
         /// automatically when omitted.
         #[arg(long)]
         game_dir: Option<PathBuf>,
-        /// Keep archives here (default: one shared folder in CLF3's data
+        /// Keep archives here (default: one shared folder in Modyssey's data
         /// directory, used by every list).
         #[arg(long)]
         downloads: Option<PathBuf>,
-        /// Tools directory (default: CLF3's data directory).
+        /// Tools directory (default: Modyssey's data directory).
         #[arg(long)]
         tools_dir: Option<PathBuf>,
         /// Mods processed in parallel.
@@ -351,7 +351,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
 
             let key = crate::settings::Settings::load().nexus_api_key;
             if key.trim().is_empty() {
-                bail!("no Nexus API key is saved in the DS2 Modpack settings");
+                bail!("no Nexus API key is saved in the Modyssey settings");
             }
             let (access, lister) = api_nexus(key.trim())?;
             let sink: super::pipeline::EventSink = std::sync::Arc::new(|event| match event {
@@ -415,7 +415,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
                 if plan.momw_version.as_deref() != Some(installed.as_str()) {
                     bail!(
                         "this instance was installed from {slug} {installed}, but the site now \
-                         serves {}. Run `ds2modpack momw install` to update it.",
+                         serves {}. Run `modyssey momw install` to update it.",
                         plan.momw_version.as_deref().unwrap_or("a newer version")
                     );
                 }
@@ -518,7 +518,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
                     inner: crate::downloaders::NexusDownloader::new(key)?,
                     dir: dirs::cache_dir()
                         .context("could not find the cache directory")?
-                        .join("ds2modpack")
+                        .join("modyssey")
                         .join("nexus-files"),
                     ttl: std::time::Duration::from_secs(24 * 3600),
                 };
@@ -574,12 +574,12 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
             let plan = build_plan_with_host(&data, &host);
             let key = crate::settings::Settings::load().nexus_api_key;
             if key.trim().is_empty() {
-                bail!("no Nexus API key is saved in the DS2 Modpack settings");
+                bail!("no Nexus API key is saved in the Modyssey settings");
             }
             let nexus = crate::downloaders::NexusDownloader::new(key.trim())?;
             let cache_dir = dirs::cache_dir()
                 .context("could not find the cache directory")?
-                .join("ds2modpack")
+                .join("modyssey")
                 .join("nexus-files");
             let lister = super::nexus::DiskCache {
                 inner: nexus,
@@ -697,7 +697,7 @@ fn api_nexus(
         inner: crate::downloaders::NexusDownloader::new(key)?,
         dir: dirs::cache_dir()
             .context("could not find the cache directory")?
-            .join("ds2modpack")
+            .join("modyssey")
             .join("nexus-files"),
         ttl: std::time::Duration::from_secs(24 * 3600),
     };

@@ -1,4 +1,4 @@
-//! `clf3 game-index`: grow and query the known-game-file index.
+//! `modyssey game-index`: grow and query the known-game-file index.
 
 use super::gallery::{scan_gallery, ScanOptions};
 use super::{AddStats, GameIndex};

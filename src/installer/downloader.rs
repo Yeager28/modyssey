@@ -246,7 +246,7 @@ fn find_manual_archive_matches(
 }
 
 /// Sidecars and files left by interrupted downloads are metadata, not archive
-/// candidates. Hidden CLF3 working files and common temporary suffixes are also
+/// candidates. Hidden Modyssey working files and common temporary suffixes are also
 /// excluded so they cannot accidentally satisfy a manifest hash.
 fn is_ignored_manual_archive_candidate(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
@@ -254,8 +254,8 @@ fn is_ignored_manual_archive_candidate(path: &Path) -> bool {
     };
     let lower_name = name.to_ascii_lowercase();
     name.starts_with('.')
-        || lower_name.ends_with(".ds2modpack-hash")
-        || lower_name.ends_with(".ds2modpack-manifest")
+        || lower_name.ends_with(".modyssey-hash")
+        || lower_name.ends_with(".modyssey-manifest")
         || lower_name.ends_with(".part")
         || lower_name.ends_with(".partial")
         || lower_name.ends_with(".tmp")
@@ -3216,7 +3216,7 @@ mod tests {
         let second = downloads.path().join("z-copy.zip");
         fs::write(&first, b"same archive")?;
         fs::write(&second, b"same archive")?;
-        fs::write(downloads.path().join("ignored.ds2modpack-hash"), b"same archive")?;
+        fs::write(downloads.path().join("ignored.modyssey-hash"), b"same archive")?;
         fs::write(downloads.path().join("ignored.partial"), b"same archive")?;
         let expected_hash = compute_file_hash(&first)?;
 

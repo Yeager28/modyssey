@@ -680,7 +680,7 @@ impl Live {
             .unwrap_or_default();
 
         std::thread::Builder::new()
-            .name("ds2modpack-progress".into())
+            .name("modyssey-progress".into())
             .spawn(move || {
                 let mut prev_disk = read_disk_write_bytes();
                 let mut prev_time = Instant::now();
@@ -957,7 +957,7 @@ impl Plain {
         self.ticker.call_once(|| {
             let weak = Arc::downgrade(self);
             let _ = std::thread::Builder::new()
-                .name("ds2modpack-progress".into())
+                .name("modyssey-progress".into())
                 .spawn(move || loop {
                     std::thread::sleep(Duration::from_secs(1));
                     let Some(plain) = weak.upgrade() else { break };

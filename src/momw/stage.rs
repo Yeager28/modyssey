@@ -202,7 +202,7 @@ pub fn extract_into(archive: &Path, dest: &Path, wrapper: Wrapper) -> Result<()>
                 .with_context(|| format!("extracting {}", archive.display()))?;
         }
         Wrapper::Strip => {
-            let tmp = dest.join(".ds2modpack-unwrap");
+            let tmp = dest.join(".modyssey-unwrap");
             if tmp.exists() {
                 std::fs::remove_dir_all(&tmp)?;
             }
@@ -442,7 +442,7 @@ mod tests {
         extract_into(&zip, &stripped, Wrapper::Strip).unwrap();
         assert!(stripped.join("proj.omwaddon").is_file());
         assert!(stripped.join("meshes/a.nif").is_file());
-        assert!(!stripped.join(".ds2modpack-unwrap").exists());
+        assert!(!stripped.join(".modyssey-unwrap").exists());
     }
 
     fn plan_with(entries: Vec<(usize, &str, &str, &str)>) -> MomwPlan {

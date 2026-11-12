@@ -18,8 +18,8 @@ if [[ ! "$cargo_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-binary_path="${CLF3_BINARY_PATH:-target/release/clf3}"
-seven_zip_path="${CLF3_7ZIP_PATH:-release/7zz}"
+binary_path="${MODYSSY_BINARY_PATH:-target/release/modyssey}"
+seven_zip_path="${MODYSSY_7ZIP_PATH:-release/7zz}"
 if [[ ! -x "$binary_path" ]]; then
     echo "Missing release executable: ${binary_path}" >&2
     exit 1
@@ -29,20 +29,20 @@ if [[ ! -x "$seven_zip_path" ]]; then
     exit 1
 fi
 
-dist_dir="${CLF3_DIST_DIR:-dist}"
+dist_dir="${MODYSSY_DIST_DIR:-dist}"
 stage_dir="$(mktemp -d)"
 trap 'rm -rf "$stage_dir"' EXIT
 mkdir -p "$dist_dir"
-cp "$binary_path" "$stage_dir/clf3"
+cp "$binary_path" "$stage_dir/modyssey"
 cp "$seven_zip_path" "$stage_dir/7zz"
-chmod +x "$stage_dir/clf3" "$stage_dir/7zz"
+chmod +x "$stage_dir/modyssey" "$stage_dir/7zz"
 
-archive_base="clf3-linux-x86_64-${cargo_version}"
+archive_base="modyssey-linux-x86_64-${cargo_version}"
 tar_archive="${archive_base}.tar.gz"
 zip_archive="${archive_base}.zip"
-compat_zip="clf3-linux-x64.zip"
+compat_zip="modyssey-linux-x64.zip"
 tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
-    -C "$stage_dir" -cf - clf3 7zz | gzip -n > "${dist_dir}/${tar_archive}"
+    -C "$stage_dir" -cf - modyssey 7zz | gzip -n > "${dist_dir}/${tar_archive}"
 python3 - "$stage_dir" "${dist_dir}/${zip_archive}" "${dist_dir}/${compat_zip}" <<'PY'
 import sys
 import zipfile
@@ -50,7 +50,7 @@ import zipfile
 source_dir, *archive_paths = sys.argv[1:]
 for archive_path in archive_paths:
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in ("clf3", "7zz"):
+        for name in ("modyssey", "7zz"):
             archive.write(f"{source_dir}/{name}", arcname=name)
 PY
 (cd "$dist_dir" && sha256sum "$tar_archive" "$zip_archive" "$compat_zip" > SHA256SUMS)

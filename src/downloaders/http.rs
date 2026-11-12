@@ -59,7 +59,7 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(4 * 60 * 60);
 impl HttpClient {
     pub fn new() -> Result<Self> {
         let client = reqwest::Client::builder()
-            .user_agent(concat!("ds2modpack/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("modyssey/", env!("CARGO_PKG_VERSION")))
             .connect_timeout(CONNECT_TIMEOUT)
             .read_timeout(READ_TIMEOUT)
             .timeout(REQUEST_TIMEOUT)

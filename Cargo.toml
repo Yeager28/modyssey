@@ -1,18 +1,18 @@
 [package]
-name = "ds2modpack"
+name = "modyssey"
 version = "0.2.9"
 edition = "2021"
-description = "DS2 Modpack by Bonkfyre — multi-game modpack installer"
+description = "Modyssey — an open-source, multi-game modlist installer (Wabbajack alternative)"
 license = "MIT"
-repository = "https://github.com/himanshudbg/ds2-modpack-app"
+repository = "https://github.com/himanshudbg/modyssey"
 authors = ["Bonkfyre"]
 
 [lib]
-name = "ds2modpack"
+name = "modyssey"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ds2modpack"
+name = "modyssey"
 path = "src/main.rs"
 [dependencies]
 # Serialization

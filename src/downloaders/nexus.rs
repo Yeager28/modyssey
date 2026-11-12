@@ -135,7 +135,7 @@ impl NexusDownloader {
 
         let client = Client::builder()
             .default_headers(headers)
-            .user_agent(concat!("ds2modpack/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("modyssey/", env!("CARGO_PKG_VERSION")))
             .build()
             .context("Failed to create HTTP client")?;
 

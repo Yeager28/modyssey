@@ -1,7 +1,7 @@
 //! OpenMW tab: browse modding-openmw.com lists and review what installing one
 //! would do. Network I/O runs on a worker thread; the view only renders.
 //! Installing is not wired up yet, and the tab says so.
-use ds2modpack::momw::{
+use modyssey::momw::{
     build_plan,
     plan::{DataEntryKind, MomwPlan},
     source::{is_advertised, MomwClient, SourceOptions},

@@ -11,17 +11,17 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
-/// Held until dropped; the operating system also releases it if CLF3 dies.
+/// Held until dropped; the operating system also releases it if Modyssey dies.
 #[derive(Debug)]
 pub struct InstallLock {
     _file: File,
 }
 
-/// `<local data>/clf3/momw-install.lock`.
+/// `<local data>/modyssey/momw-install.lock`.
 pub fn default_lock_path() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("ds2modpack")
+        .join("modyssey")
         .join("momw-install.lock"))
 }
 

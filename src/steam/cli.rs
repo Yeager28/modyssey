@@ -1,4 +1,4 @@
-//! `clf3 steam`: log in to Steam once and keep the login.
+//! `modyssey steam`: log in to Steam once and keep the login.
 
 use super::session::{connect_saved, login_with_password, SavedOutcome};
 use super::store::{now_secs, LoginStore, SavedLogin};
@@ -92,11 +92,11 @@ pub async fn run(args: &SteamArgs) -> Result<()> {
             );
         }
         SteamCommand::Status { check } => match store.load_login()? {
-            None => println!("Not logged in. Run `ds2modpack steam login`."),
+            None => println!("Not logged in. Run `modyssey steam login`."),
             Some(saved) => {
                 println!("Saved login: {}", describe(&saved));
                 if !saved.is_usable_at(now_secs()) {
-                    println!("It has expired or is about to; run `ds2modpack steam login`.");
+                    println!("It has expired or is about to; run `modyssey steam login`.");
                 } else if *check {
                     match connect_saved(&store).await? {
                         SavedOutcome::Connected(connection, _) => println!(
@@ -104,7 +104,7 @@ pub async fn run(args: &SteamArgs) -> Result<()> {
                             u64::from(connection.steam_id())
                         ),
                         SavedOutcome::Rejected(_) => {
-                            println!("Steam no longer accepts this login (revoked?). It was removed; run `ds2modpack steam login`.")
+                            println!("Steam no longer accepts this login (revoked?). It was removed; run `modyssey steam login`.")
                         }
                         SavedOutcome::Expired(_) => {
                             println!("The login had expired and was removed.")

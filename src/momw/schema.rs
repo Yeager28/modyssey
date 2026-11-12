@@ -3,7 +3,7 @@
 //! `GET /api/lists/<slug>` returns an ordered array of [`ModEntry`] and
 //! `GET /api/cfg-generator/<slug>` returns a [`CfgBundle`]. Both are plain
 //! JSON data published by modding-openmw.com. Unknown fields are ignored so the
-//! site can add metadata without breaking older CLF3 builds.
+//! site can add metadata without breaking older Modyssey builds.
 
 use serde::{Deserialize, Serialize};
 
@@ -82,7 +82,7 @@ pub enum Action {
         #[serde(default)]
         arguments: Option<StringOrList>,
     },
-    /// An action this CLF3 build does not understand. Planning reports it as a
+    /// An action this Modyssey build does not understand. Planning reports it as a
     /// blocker rather than silently skipping a step.
     #[serde(other)]
     Unknown,

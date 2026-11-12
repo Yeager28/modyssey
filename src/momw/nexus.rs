@@ -159,7 +159,7 @@ impl NexusFileLister for NexusDownloader {
     }
 }
 
-/// Fluorine does the authenticated request; no credentials reach CLF3.
+/// Fluorine does the authenticated request; no credentials reach Modyssey.
 pub struct HostLister(pub Arc<dyn HostedDownloadProvider>);
 
 #[async_trait]

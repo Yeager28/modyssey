@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Local Nexus acquisition broker for a pinned CLF3 plan.
+"""Local Nexus acquisition broker for a pinned Modyssey plan.
 
-Reads the saved CLF3 key only in this process. Authenticated requests never
+Reads the saved Modyssey key only in this process. Authenticated requests never
 redirect; archive downloads use a different, unauthenticated opener. Reports
 contain identities and verified paths, never keys or signed URLs.
 """
@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--cache', required=True, type=Path)
     parser.add_argument('--workers', type=int, default=4)
     parser.add_argument('--manifest', type=Path, help='Private collection.json input for exact direct-download URLs')
-    parser.add_argument('--settings', type=Path, default=Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'clf3/settings.json')
+    parser.add_argument('--settings', type=Path, default=Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'modyssey/settings.json')
     args = parser.parse_args()
     os.umask(0o077)
     plan = json.loads(args.plan.read_text())
@@ -74,14 +74,14 @@ def main():
             direct_urls[expected_id] = source['url']
     key = json.loads(args.settings.read_text()).get('nexus_api_key', '')
     if not key:
-        raise AcquisitionError('No saved CLF3 Nexus key')
+        raise AcquisitionError('No saved Modyssey Nexus key')
     args.cache.mkdir(parents=True, exist_ok=True)
     auth = urllib.request.build_opener(NoRedirect())
 
     def api(path):
         if not path.startswith('/v1/') or '?' in path:
             raise AcquisitionError('Invalid API path')
-        request = urllib.request.Request('https://api.nexusmods.com' + path, headers={'apikey': key, 'User-Agent': 'CLF3/collections-local'})
+        request = urllib.request.Request('https://api.nexusmods.com' + path, headers={'apikey': key, 'User-Agent': 'Modyssey/collections-local'})
         try:
             with auth.open(request, timeout=45) as response:
                 return json.loads(response.read(2 * 1024 * 1024))
@@ -125,7 +125,7 @@ def main():
                 link = urllib.parse.urlunsplit(parsed._replace(path=urllib.parse.quote(parsed.path, safe='/%:@!$&\'()*+,;=-._~')))
                 # Separate opener: the API key is never a default HTTP header.
                 cdn = urllib.request.build_opener()
-                request = urllib.request.Request(link, headers={'User-Agent': 'CLF3/collections-local'})
+                request = urllib.request.Request(link, headers={'User-Agent': 'Modyssey/collections-local'})
                 temp = target.with_suffix('.' + uuid.uuid4().hex + '.part')
                 hasher = hashlib.md5()
                 count = 0
@@ -161,7 +161,7 @@ def main():
                 atomic_json(args.cache / 'failures.json', failures)
                 print(json.dumps({'download_failure': str(error), 'mod_id': artifact['mod_id'], 'file_id': artifact['file_id']}), flush=True)
 
-    print(json.dumps({'acquiring': len(artifacts), 'credentials': 'saved CLF3 key; API host only'}), flush=True)
+    print(json.dumps({'acquiring': len(artifacts), 'credentials': 'saved Modyssey key; API host only'}), flush=True)
     # Largest first keeps the tail short; independent identities only.
     artifacts.sort(key=lambda a: a.get('expected_size') or 0, reverse=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(args.workers, 4))) as pool:

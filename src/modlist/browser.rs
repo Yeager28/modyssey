@@ -197,7 +197,7 @@ impl ModlistBrowser {
     /// Create a new modlist browser
     pub fn new() -> Result<Self> {
         let client = Client::builder()
-            .user_agent(concat!("ds2modpack/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("modyssey/", env!("CARGO_PKG_VERSION")))
             .timeout(std::time::Duration::from_secs(30))
             .build()
             .context("Failed to create HTTP client")?;
@@ -455,7 +455,7 @@ impl ModlistBrowser {
     fn cache_dir() -> Result<PathBuf> {
         let cache_dir = dirs::cache_dir()
             .context("Could not determine cache directory")?
-            .join("ds2modpack")
+            .join("modyssey")
             .join("modlists");
         std::fs::create_dir_all(&cache_dir)?;
         Ok(cache_dir)

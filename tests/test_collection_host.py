@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
-BINARY = Path(__file__).resolve().parents[1] / "target/debug/clf3"
+BINARY = Path(__file__).resolve().parents[1] / "target/debug/modyssey"
 SOURCE = "https://www.nexusmods.com/games/skyrimspecialedition/collections/qfftpq/revisions/12"
 
 

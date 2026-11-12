@@ -18,7 +18,7 @@ CLAUDE.md
 
 # Local installer runs and standalone build output
 *.log
-/clf3-linux-x86_64
+/modyssey-linux-x86_64
 
 # Local dev notes and milestone reports (never published)
 /VERDICT.md

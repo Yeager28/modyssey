@@ -60,11 +60,11 @@ impl Release {
     }
 }
 
-/// Shared store: `<local data>/clf3/openmw/<version>/`.
+/// Shared store: `<local data>/modyssey/openmw/<version>/`.
 pub fn default_store_dir() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("ds2modpack")
+        .join("modyssey")
         .join("openmw"))
 }
 
@@ -86,9 +86,9 @@ fn is_stable(version: &str) -> bool {
 fn client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
         .user_agent(concat!(
-            "ds2modpack/",
+            "modyssey/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/himanshudbg/ds2-modpack-app)"
+            " (+https://github.com/himanshudbg/modyssey)"
         ))
         .build()?)
 }
@@ -380,7 +380,7 @@ pub fn install_desktop_entry(root: &Path, title: &str, applications: &Path) -> R
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect();
     std::fs::create_dir_all(applications)?;
-    let file = applications.join(format!("ds2modpack-openmw-{}.desktop", slug.trim_matches('-')));
+    let file = applications.join(format!("modyssey-openmw-{}.desktop", slug.trim_matches('-')));
     std::fs::write(&file, desktop_entry(root, title))?;
     #[cfg(unix)]
      std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755))?;
@@ -630,7 +630,7 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         let apps = dir.path().join("apps");
         let file = install_desktop_entry(&root, "My List", &apps).unwrap();
-        assert_eq!(file.file_name().unwrap(), "ds2modpack-openmw-my-list.desktop");
+        assert_eq!(file.file_name().unwrap(), "modyssey-openmw-my-list.desktop");
         let text = std::fs::read_to_string(&file).unwrap();
         assert!(text.contains("Name=My List (OpenMW)"), "{text}");
         assert!(

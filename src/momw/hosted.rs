@@ -1,9 +1,9 @@
-//! `clf3 momw install --hosted`: the same install, driven by Fluorine.
+//! `modyssey momw install --hosted`: the same install, driven by Fluorine.
 //!
 //! Stdout carries only newline-delimited JSON in the installer's existing
 //! event vocabulary, so Fluorine's progress view works unchanged. Nexus
 //! authorization (including the click flow for free accounts) and Nexus file
-//! lists are answered by Fluorine; no credentials reach CLF3.
+//! lists are answered by Fluorine; no credentials reach Modyssey.
 
 use super::fetch::NexusAccess;
 use super::install::Event as StageEvent;
