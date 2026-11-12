@@ -23,6 +23,8 @@ use std::{
     },
     time::Duration,
 };
+#[cfg(unix)]
+use std::fs::File;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]

@@ -8,6 +8,8 @@
 use anyhow::bail;
 use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
+#[cfg(unix)]
+use std::io::Read;
 use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 
