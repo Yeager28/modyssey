@@ -5,7 +5,7 @@
 Please use **GitHub's private vulnerability reporting** for this repository
 (Security tab → "Report a vulnerability"), which is enabled. If you cannot
 use it, contact the maintainer through the GitHub profile
-([himanshudbg](https://github.com/himanshudbg)).
+([Yeager28](https://github.com/Yeager28)).
 
 **Please do not open public issues for security problems.**
 

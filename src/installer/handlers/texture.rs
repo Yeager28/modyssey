@@ -58,7 +58,7 @@ pub fn prompt_unsupported_formats(unsupported: &HashMap<String, Vec<String>>) ->
 
     println!("╔══════════════════════════════════════════════════════════════╗");
     println!("║  Please report these formats to the Modyssey developers!        ║");
-    println!("║  https://github.com/himanshudbg/modyssey/issues                   ║");
+    println!("║  https://github.com/Yeager28/modyssey/issues                      ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
     println!("If you continue, these textures will use BC1 fallback (may look wrong).\n");

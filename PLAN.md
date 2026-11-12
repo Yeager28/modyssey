@@ -53,7 +53,7 @@ Three candidates, checked against crates.io and GitHub for collisions (2026-11-1
 
 Branding notes:
 
-- Repo: `github.com/himanshudbg/majula` (owner's account); crates published as `majula`, `majula-core`, etc.
+- Repo: `github.com/Yeager28/majula` (owner's account); crates published as `majula`, `majula-core`, etc.
 - Icon direction: a stylized DS2 "rotating majula bonfire" mark — circular, ember gradient on the dark surface color; avoid FromSoftware asset copies (draw our own).
 - Trademark caution (details §3): "Majula" is a place name from Dark Souls II; fan-tool use of a lore proper noun is long-standing community practice, but the README should carry a short disclaimer ("Not affiliated with or endorsed by FromSoftware or Bandai Namco") and we must never ship game assets in the repo or the app binary.
 - If the owner prefers Bonfire or wants a non-FromSoftware name entirely, nothing in this plan depends on the string; swap at M0 with zero architectural impact.
@@ -175,7 +175,7 @@ JSON, UTF-8, **PascalCase keys** (WJ compatibility). Fields new relative to WJ a
 ### 5.1 Workspace layout (Cargo workspace)
 
 ```
-majula/                          # github.com/himanshudbg/majula (GPL-3.0-or-later)
+majula/                          # github.com/Yeager28/majula (GPL-3.0-or-later)
 ├── Cargo.toml                   # [workspace]
 ├── crates/
 │   ├── majula-core/             # engine: hashing, manifest model, .modfile/.wabbajack readers,
@@ -340,7 +340,7 @@ Settings → Nexus account: sign in with a personal API key or OAuth (device flo
 Each milestone: goal, acceptance criteria (observable), rough effort (focused days of one maintainer; calendar ≈ 2–3× that part-time).
 
 **M0 — Foundations & relaunch** *(3–5 d)*
-Commit the prototype's ~70 uncommitted files (rebrand + Windows port + DS2 entry) as a clean graft on upstream CLF3 history. Relicense: GPL-3.0 LICENSE + `LICENSE-MIT-CLF3` + rewritten ATTRIBUTION/CONTRIBUTING (new WJ-reference policy) + ACKNOWLEDGMENTS + MODLIST-POLICY template. Create `himanshudbg/majula` public repo, push full history (132 CLF3 commits preserved), fix `Cargo.toml` repository URL. Split into the workspace crate skeleton (§5.1). CI: `windows-latest` + `ubuntu-latest` build/test/clippy/fmt + cargo-audit. Fix the 9 Windows test failures (7z PATH ×2 — locate `C:/Program Files/7-Zip/7z.exe`; MOMW unix-path ×6 — cfg-gate or relocate to a `momw` feature; DirectXTex COM ×1 — mark `#[ignore]` on machines without the GPU interface). GPUI spike: hello-world window builds & runs on Windows with `gpui = "0.2.2"`.
+Commit the prototype's ~70 uncommitted files (rebrand + Windows port + DS2 entry) as a clean graft on upstream CLF3 history. Relicense: GPL-3.0 LICENSE + `LICENSE-MIT-CLF3` + rewritten ATTRIBUTION/CONTRIBUTING (new WJ-reference policy) + ACKNOWLEDGMENTS + MODLIST-POLICY template. Create `Yeager28/majula` public repo, push full history (132 CLF3 commits preserved), fix `Cargo.toml` repository URL. Split into the workspace crate skeleton (§5.1). CI: `windows-latest` + `ubuntu-latest` build/test/clippy/fmt + cargo-audit. Fix the 9 Windows test failures (7z PATH ×2 — locate `C:/Program Files/7-Zip/7z.exe`; MOMW unix-path ×6 — cfg-gate or relocate to a `momw` feature; DirectXTex COM ×1 — mark `#[ignore]` on machines without the GPU interface). GPUI spike: hello-world window builds & runs on Windows with `gpui = "0.2.2"`.
 **Accept:** green CI both OSes; `cargo deny` clean; repo public with all license/attribution docs; GPUI spike screenshot in the PR.
 
 **M1 — Engine crates ported** *(5–10 d)*
@@ -444,11 +444,11 @@ A mod-list installer asks users to run an unsigned binary that downloads gigabyt
 
 **Recommendation: new public repo, seeded with the prototype's full history — do not "evolve" `ds2-modpack-app` in place.**
 
-1. **Create `github.com/himanshudbg/majula`** (public, GPL-3.0, per §2/§3).
+1. **Create `github.com/Yeager28/majula`** (public, GPL-3.0, per §2/§3).
 2. **Push the existing prototype repo's history unchanged** (the 132-commit CLF3 lineage — MIT compliance *wants* the history; GPL wants the future public). Then commit the currently-uncommitted ~70-file rebrand/port work as one clean graft commit ("Windows port + DS2 game entry + rebrand to Majula"), followed by the relicense commit (LICENSE GPL-3.0, LICENSE-MIT-CLF3, docs) and the workspace-split commit. Nothing is squashed; `ATTRIBUTION.md`'s grafted-history claim becomes true.
-3. **Why not evolve in place:** `ds2-modpack-app` carries dev logs, `tmp-verify/`, `clf3-upstream/` clone, and a placeholder identity (its `Cargo.toml` repository URL already points at `himanshudbg/ds2-modpack-app`); a fresh repo with the same history gives a clean face for marketing while `ds2-modpack-app` remains the private working directory until the public flip, after which it is archived (a pointer README, no deletions).
+3. **Why not evolve in place:** `ds2-modpack-app` carries dev logs, `tmp-verify/`, `clf3-upstream/` clone, and a placeholder identity (its `Cargo.toml` repository URL already pointed at `himanshudbg/ds2-modpack-app` — historical note, pre-migration placeholder); a fresh repo with the same history gives a clean face for marketing while `ds2-modpack-app` remains the private working directory until the public flip, after which it is archived (a pointer README, no deletions).
 4. **CLF3 lineage handling:** preserved forever via history + `LICENSE-MIT-CLF3` + `ATTRIBUTION.md`; the old "never reference WJ C#" rule is replaced by the GPL acknowledgment model (§3.1); an issue/PR is opened upstream to CLF3 as a courtesy note that we forked (MIT etiquette).
-5. **The modlist pipeline meanwhile:** the **Wabbajack fork stays the compiler** for `DS2 Modpack by Bonkfyre` until M5 — it is proven (v1.0.1 compiled clean in 11 s, zero NoMatch) and its branch (`dark-souls-2-support`, +18-line `DarkSoulsII` registry patch) is exactly the reference `majula-compiler` will port. The private `himanshudbg/ds2-modpack-bonkfyre` repo remains the list's distribution stash (patched WJ build zips + `.wabbajack`), with the standing note that the *Majula app* replaces the Wabbajack-named zips as the subscriber download once M4 proves parity. `wabbajack-fork/` on disk is reference + compiler; it is never modified by Majula work (its GPLv3 source must stay buildable as the fallback).
+5. **The modlist pipeline meanwhile:** the **Wabbajack fork stays the compiler** for `DS2 Modpack by Bonkfyre` until M5 — it is proven (v1.0.1 compiled clean in 11 s, zero NoMatch) and its branch (`dark-souls-2-support`, +18-line `DarkSoulsII` registry patch) is exactly the reference `majula-compiler` will port. The private `Yeager28/ds2-modpack-bonkfyre` repo remains the list's distribution stash (patched WJ build zips + `.wabbajack`), with the standing note that the *Majula app* replaces the Wabbajack-named zips as the subscriber download once M4 proves parity. `wabbajack-fork/` on disk is reference + compiler; it is never modified by Majula work (its GPLv3 source must stay buildable as the fallback).
 6. **What happens to each on-disk asset:** `ds2-modpack-app/` → migrates into the new repo (then archived locally); `wabbajack-fork/` → untouched compiler/reference until M5; `DS2 Modlist/` (the instance) → the M4 known-good hash oracle and M5 compile source; `.frostfx-research/` → stays private research (never committed — it contains community/workflow notes, not app material).
 
 ---
@@ -516,6 +516,6 @@ Then: M1 begins (engine crate moves + CLI parity on the showcase list).
 | Showcase list | `H:/Games/wabbajack-fork/output/DS2-Modpack-by-Bonkfyre-1.0.1.wabbajack` | 42.4 MB, SHA-256 `65E0F05A…BD0B`; 15 archives (11 Nexus / 2 HTTP / 2 manual); 10,616 directives incl. 79 patches; GameType DarkSoulsII |
 | Known-good instance | `H:/Games/DS2 Modlist/` | The M4 hash oracle + M5 compile source |
 | Research corpus | `H:/Games/DS2 Modlist/.frostfx-research/` | wabbajack-plan.md, wj-phase3b-private-recompile.md (+ phases 0–3) |
-| List distribution | `himanshudbg/ds2-modpack-bonkfyre` (GitHub, private) | Release v1.0 with patched-WJ zips + list; subscriber-facing notes already anticipate the Majula app |
+| List distribution | `Yeager28/ds2-modpack-bonkfyre` (GitHub, private) | Release v1.0 with patched-WJ zips + list; subscriber-facing notes already anticipate the Majula app |
 
 *End of plan. Nothing has been implemented; this document is the deliverable. Next gate: owner approval of §2 (name), §3 (licensing resolution), and §8 (milestone scope).*

@@ -50,7 +50,7 @@ impl Fetcher {
                 .user_agent(concat!(
                     "modyssey/",
                     env!("CARGO_PKG_VERSION"),
-                    " (+https://github.com/himanshudbg/modyssey)"
+                    " (+https://github.com/Yeager28/modyssey)"
                 ))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?,

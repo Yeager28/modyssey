@@ -118,7 +118,7 @@ pub async fn provision(dir: &Path, force: bool) -> Result<ToolSet> {
             .user_agent(concat!(
                 "modyssey/",
                 env!("CARGO_PKG_VERSION"),
-                " (+https://github.com/himanshudbg/modyssey)"
+                " (+https://github.com/Yeager28/modyssey)"
             ))
             .build()?
             .get(TOOLS_PACK_URL)

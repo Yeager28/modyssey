@@ -66,7 +66,7 @@ impl MomwClient {
     pub fn new(options: SourceOptions) -> Result<Self> {
         let http = reqwest::Client::builder()
             .user_agent(format!(
-                "modyssey/{} (+https://github.com/himanshudbg/modyssey)",
+                "modyssey/{} (+https://github.com/Yeager28/modyssey)",
                 env!("CARGO_PKG_VERSION")
             ))
             .timeout(Duration::from_secs(60))

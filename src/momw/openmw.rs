@@ -88,7 +88,7 @@ fn client() -> Result<reqwest::Client> {
         .user_agent(concat!(
             "modyssey/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/himanshudbg/modyssey)"
+            " (+https://github.com/Yeager28/modyssey)"
         ))
         .build()?)
 }
