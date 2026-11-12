@@ -1,7 +1,7 @@
-//! CLF3 - Wabbajack Modlist Installer
+//! DS2 Modpack by Bonkfyre — multi-game modpack installer.
 //!
-//! Named after Chlorine Trifluoride - burns through modlists
-//! like CLF3 burns through concrete.
+//! Derivative work of CLF3 (MIT, © SulfurNitride) — see ATTRIBUTION.md and
+//! LICENSE in the repository root.
 
 // Use mimalloc — returns freed pages to OS aggressively, preventing RSS bloat
 // during extraction where hundreds of large buffers are allocated and freed.
@@ -80,15 +80,15 @@ use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 #[derive(Parser)]
-#[command(name = "clf3")]
-#[command(author = "CLF3 Team")]
+#[command(name = "ds2modpack")]
+#[command(author = "Bonkfyre")]
 #[command(version)]
 #[command(
-    about = "Wabbajack modlist installer - burns through modlists like CLF3 burns through concrete"
+    about = "DS2 Modpack by Bonkfyre - multi-game modpack installer"
 )]
 struct Cli {
     /// When omitted (e.g. double-click from a file manager), the browser
-    /// GUI opens. Pass `clf3 help` to see all subcommands.
+    /// GUI opens. Pass `ds2modpack help` to see all subcommands.
     #[command(subcommand)]
     command: Option<Commands>,
 
@@ -101,13 +101,13 @@ struct Cli {
 #[allow(clippy::large_enum_variant)]
 enum Commands {
     /// Inspect and plan Nexus Collections without loading account credentials.
-    Collection(clf3::collection::cli::CollectionArgs),
+    Collection(ds2modpack::collection::cli::CollectionArgs),
     /// Plan Modding-OpenMW (OpenMW) mod lists from modding-openmw.com.
-    Momw(clf3::momw::cli::MomwArgs),
+    Momw(ds2modpack::momw::cli::MomwArgs),
     /// Grow and query the index of known game-file hashes and versions.
-    GameIndex(clf3::game_index::cli::GameIndexArgs),
+    GameIndex(ds2modpack::game_index::cli::GameIndexArgs),
     /// Log in to Steam and keep the login saved between runs.
-    Steam(clf3::steam::cli::SteamArgs),
+    Steam(ds2modpack::steam::cli::SteamArgs),
     /// Browse available Wabbajack modlists
     Browser,
 
@@ -320,7 +320,7 @@ enum ModlistAction {
     },
 
     /// Re-install a modlist against the latest gallery version. Reuses the
-    /// install + downloads directories recorded in `.clf3-install.json`.
+    /// install + downloads directories recorded in `.ds2modpack-install.json`.
     Update {
         /// Full or partial modlist name. Partial names use the same
         /// matching rules as the gallery search bar.
@@ -339,19 +339,19 @@ async fn main() -> Result<()> {
     // Collection inspection is read-only and credential-free. Do not initialize
     // settings, a browser, NXM registration, or persistent log files for it.
     if let Some(Commands::Collection(args)) = &cli.command {
-        return clf3::collection::cli::run(args).await;
+        return ds2modpack::collection::cli::run(args).await;
     }
     // MOMW list planning only reads public site data; same credential-free path.
     if let Some(Commands::Momw(args)) = &cli.command {
-        return clf3::momw::cli::run(args).await;
+        return ds2modpack::momw::cli::run(args).await;
     }
     // The game index is local data only; no credentials or settings needed.
     if let Some(Commands::GameIndex(args)) = &cli.command {
-        return clf3::game_index::cli::run(args).await;
+        return ds2modpack::game_index::cli::run(args).await;
     }
     // Steam login manages only its own saved-login file.
     if let Some(Commands::Steam(args)) = &cli.command {
-        return clf3::steam::cli::run(args).await;
+        return ds2modpack::steam::cli::run(args).await;
     }
 
     // Set up file logging (always enabled) next to the executable
@@ -362,18 +362,18 @@ async fn main() -> Result<()> {
 
     // Create timestamped log filename
     let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S");
-    let log_filename = format!("clf3-{}.log", timestamp);
+    let log_filename = format!("ds2modpack-{}.log", timestamp);
 
     // Set up file appender
     let file_appender = tracing_appender::rolling::never(&log_dir, &log_filename);
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     // Create filter - file gets info level, console follows user preference
-    let file_filter = EnvFilter::new("clf3=info,warn");
+    let file_filter = EnvFilter::new("ds2modpack=info,warn");
     let console_filter = EnvFilter::from_default_env().add_directive(if cli.verbose {
-        "clf3=debug".parse()?
+        "ds2modpack=debug".parse()?
     } else {
-        "clf3=warn".parse()?
+        "ds2modpack=warn".parse()?
     });
 
     // File layer (always enabled)
@@ -433,7 +433,7 @@ async fn main() -> Result<()> {
         .init();
 
     let log_path = log_dir.join(&log_filename);
-    tracing::info!("CLF3 started, logging to {}", log_path.display());
+    tracing::info!("DS2 Modpack started, logging to {}", log_path.display());
 
     // Panic hook: log panics from ANY thread to the log file before aborting.
     let panic_log = log_path.clone();
@@ -470,7 +470,8 @@ async fn main() -> Result<()> {
         eprintln!("PANIC: {}", msg);
     }));
 
-    // Signal handler: log SIGTERM/SIGHUP so we know what killed the process.
+    #[cfg(unix)]
+     // Signal handler: log SIGTERM/SIGHUP so we know what killed the process.
     {
         let signal_log = log_path.clone();
         std::thread::spawn(move || {
@@ -681,7 +682,7 @@ async fn main() -> Result<()> {
                     .find(|g| g.adapter_index == idx)
                     .ok_or_else(|| {
                         anyhow::anyhow!(
-                            "GPU index {} not found. Run 'clf3 list-gpu' to see available GPUs.",
+                            "GPU index {} not found. Run `ds2modpack list-gpu` to see available GPUs.",
                             idx
                         )
                     })?;
@@ -764,7 +765,7 @@ async fn main() -> Result<()> {
                 None
             };
             // Remember the original CLI argument as a URL if it was one — it
-            // ends up recorded in `.clf3-install.json` so `modlist update`
+            // ends up recorded in `.ds2modpack-install.json` so `modlist update`
             // can fall back to it later.
             let original_wabbajack_url = if wabbajack_file.starts_with("http://")
                 || wabbajack_file.starts_with("https://")
@@ -841,7 +842,7 @@ async fn main() -> Result<()> {
                     .or_else(|| nexus_oauth_token.is_some().then(String::new))
                     .ok_or_else(|| {
                         anyhow::anyhow!(
-                            "Nexus API key or OAuth token required. Set an API key with `clf3 set-api-key YOUR_KEY` or pass --nexus-oauth-token"
+                            "Nexus API key or OAuth token required. Set an API key with `ds2modpack set-api-key YOUR_KEY` or pass --nexus-oauth-token"
                         )
                     })?
             };
@@ -967,7 +968,7 @@ async fn main() -> Result<()> {
                     .for_stderr()
                     .to_string()
             };
-            reporter.log(&heading(&format!("CLF3 {}", env!("CARGO_PKG_VERSION"))));
+            reporter.log(&heading(&format!("DS2 Modpack {}", env!("CARGO_PKG_VERSION"))));
             let rows = [
                 ("Modlist", installer.modlist_summary().unwrap_or_default()),
                 ("Game", header_game),
@@ -1228,7 +1229,7 @@ async fn run_fluorine_action(action: FluorineAction) -> Result<()> {
                     install.source
                 ),
                 None => println!(
-                    "Detected:               (none — run `clf3 fluorine install` to fetch \
+                    "Detected:               (none — run `ds2modpack fluorine install` to fetch \
                      the latest release)"
                 ),
             }
@@ -1319,7 +1320,7 @@ async fn fetch_wabbajack_from_url(url: &str, details_to_stderr: bool) -> Result<
 
     let cache_dir = dirs::cache_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("clf3")
+        .join("ds2modpack")
         .join("modlists");
     std::fs::create_dir_all(&cache_dir)?;
 
@@ -1402,7 +1403,7 @@ fn derive_machine_name_from_settings(
     }
 }
 
-/// Top-level dispatcher for `clf3 modlist <action>`.
+/// Top-level dispatcher for `ds2modpack modlist <action>`.
 async fn run_modlist_action(action: ModlistAction, cli_reporter: &Arc<CliReporter>) -> Result<()> {
     match action {
         ModlistAction::Check { name, json } => run_modlist_check(name, json).await,
@@ -1410,7 +1411,7 @@ async fn run_modlist_action(action: ModlistAction, cli_reporter: &Arc<CliReporte
     }
 }
 
-/// `clf3 modlist check`: report which installs have a newer gallery version.
+/// `ds2modpack modlist check`: report which installs have a newer gallery version.
 async fn run_modlist_check(name: Option<String>, json: bool) -> Result<()> {
     let settings = settings::Settings::load();
     let installs = modlist::update::discover_installs(&settings);
@@ -1437,7 +1438,7 @@ async fn run_modlist_check(name: Option<String>, json: bool) -> Result<()> {
     if filtered.is_empty() {
         if let Some(q) = &name {
             anyhow::bail!(
-                "No tracked install for '{}'. Try `clf3 install <wabbajack> ...` first.",
+                "No tracked install for '{}'. Try `ds2modpack install <wabbajack> ...` first.",
                 q
             );
         }
@@ -1453,7 +1454,7 @@ async fn run_modlist_check(name: Option<String>, json: bool) -> Result<()> {
     Ok(())
 }
 
-/// `clf3 modlist update <name>`: re-install the modlist against the latest
+/// `ds2modpack modlist update <name>`: re-install the modlist against the latest
 /// gallery version, reusing the original install and downloads directories.
 async fn run_modlist_update(
     name: String,
@@ -1476,8 +1477,8 @@ async fn run_modlist_update(
         .find(|r| r.machine_name == machine_name)
         .ok_or_else(|| {
             anyhow::anyhow!(
-                "Modlist '{}' resolves to '{}' but is not tracked by CLF3. \
-                 Run `clf3 install` once to register it.",
+                "Modlist '{}' resolves to '{}' but is not tracked by DS2 Modpack. \
+                 Run `ds2modpack install` once to register it.",
                 name,
                 machine_name
             )
@@ -1566,7 +1567,7 @@ async fn run_modlist_update(
     .or_else(|| nexus_oauth_token.as_ref().map(|_| String::new()))
     .ok_or_else(|| {
         anyhow::anyhow!(
-            "Nexus API key or OAuth token required. Set an API key with `clf3 set-api-key YOUR_KEY` or export NEXUS_OAUTH_TOKEN"
+            "Nexus API key or OAuth token required. Set an API key with `ds2modpack set-api-key YOUR_KEY` or export NEXUS_OAUTH_TOKEN"
         )
     })?;
 
@@ -1577,7 +1578,7 @@ async fn run_modlist_update(
         }
         None => anyhow::bail!(
             "Could not auto-detect a game directory with matching files. \
-             Run `clf3 install <wabbajack> ...` directly with --game to override."
+             Run `ds2modpack install <wabbajack> ...` directly with --game to override."
         ),
     };
 

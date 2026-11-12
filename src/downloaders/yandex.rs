@@ -48,7 +48,7 @@ struct ListItem {
 impl YandexDownloader {
     pub fn new() -> Result<Self> {
         let client = Client::builder()
-            .user_agent("Mozilla/5.0 (X11; Linux x86_64) clf3/1.0")
+            .user_agent("Mozilla/5.0 (X11; Linux x86_64) ds2modpack/1.0")
             .build()
             .context("Failed to create Yandex HTTP client")?;
         Ok(Self { client })

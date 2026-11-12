@@ -94,7 +94,7 @@ impl ToolSet {
 pub fn default_tools_dir() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("clf3")
+        .join("ds2modpack")
         .join("tools")
         .join("momw-tools-pack"))
 }
@@ -116,9 +116,9 @@ pub async fn provision(dir: &Path, force: bool) -> Result<ToolSet> {
     let result = async {
         let response = reqwest::Client::builder()
             .user_agent(concat!(
-                "CLF3/",
+                "ds2modpack/",
                 env!("CARGO_PKG_VERSION"),
-                " (+https://github.com/SulfurNitride/CLF3)"
+                " (+https://github.com/himanshudbg/ds2-modpack-app)"
             ))
             .build()?
             .get(TOOLS_PACK_URL)
@@ -150,7 +150,8 @@ pub async fn provision(dir: &Path, force: bool) -> Result<ToolSet> {
 
 /// Unpack only the named files, flat, and mark binaries executable.
 fn extract_wanted(archive: &Path, dest: &Path, wanted: &[(String, &'static str)]) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
+    #[cfg(unix)]
+     use std::os::unix::fs::PermissionsExt;
     let file = std::fs::File::open(archive)?;
     let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(file));
     for entry in tar.entries()? {
@@ -172,7 +173,8 @@ fn extract_wanted(archive: &Path, dest: &Path, wanted: &[(String, &'static str)]
             .unpack(&tmp)
             .with_context(|| format!("unpacking {name}"))?;
         if *target != "version.txt" {
-            std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
+        #[cfg(unix)]
+         std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
         }
         std::fs::rename(&tmp, &out)?;
     }
@@ -512,7 +514,7 @@ pub async fn run_generators(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

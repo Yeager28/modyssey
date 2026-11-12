@@ -85,7 +85,7 @@ impl StdioHost {
 
         let reader_host = Arc::clone(&host);
         std::thread::Builder::new()
-            .name("clf3-host-stdin".into())
+            .name("ds2modpack-host-stdin".into())
             .spawn(move || reader_host.read_commands())
             .expect("spawn host protocol reader");
 
@@ -123,7 +123,7 @@ impl StdioHost {
             .unwrap_or_default();
         if version != HOST_PROTOCOL_VERSION {
             bail!(
-                "Unsupported host protocol version {version}; CLF3 requires {HOST_PROTOCOL_VERSION}"
+                "Unsupported host protocol version {version}; DS2 Modpack requires {HOST_PROTOCOL_VERSION}"
             );
         }
         Ok(())

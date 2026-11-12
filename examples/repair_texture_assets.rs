@@ -9,8 +9,8 @@ use ba2::fo4::{
 };
 use ba2::prelude::*;
 use ba2::CompressionResult;
-use clf3::modlist::{BSAFileState, CreateBSADirective};
-use clf3::textures::{process_texture_with_mips, OutputFormat};
+use ds2modpack::modlist::{BSAFileState, CreateBSADirective};
+use ds2modpack::textures::{process_texture_with_mips, OutputFormat};
 use image_dds::ddsfile::Dds;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -75,13 +75,13 @@ fn execute(action: Action) -> Result<()> {
         } => {
             fs::create_dir_all(&output)?;
             let extracted =
-                clf3::archive::sevenzip::extract_files_case_insensitive(&archive, &files, &output)?;
+                ds2modpack::archive::sevenzip::extract_files_case_insensitive(&archive, &files, &output)?;
             let expected: BTreeSet<_> = files.iter().map(|s| normalize(s)).collect();
             anyhow::ensure!(extracted == expected.len(), "Incomplete source extraction");
         }
         Action::ExtractBa2 { archive, files } => {
             let wanted = files.keys().map(|s| normalize(s)).collect();
-            let extracted = clf3::bsa::extract_archive_batch(&archive, &wanted, |name, data| {
+            let extracted = ds2modpack::bsa::extract_archive_batch(&archive, &wanted, |name, data| {
                 let output = files
                     .get(&normalize(name))
                     .context("Unexpected archive entry")?;

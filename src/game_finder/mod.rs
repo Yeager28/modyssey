@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use clf3::game_finder::{detect_all_games, Launcher};
+//! use ds2modpack::game_finder::{detect_all_games, Launcher};
 //!
 //! let result = detect_all_games();
 //! for game in &result.games {

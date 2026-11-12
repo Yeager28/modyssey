@@ -21,7 +21,7 @@
 //! # Usage
 //!
 //! ```ignore
-//! use clf3::archive::sevenzip::{list_archive, extract_file_case_insensitive, extract_all};
+//! use ds2modpack::archive::sevenzip::{list_archive, extract_file_case_insensitive, extract_all};
 //!
 //! let entries = list_archive("archive.7z")?;
 //! let data = extract_file_case_insensitive("archive.7z", "path/in/archive.txt")?;
@@ -446,6 +446,18 @@ pub fn get_7z_path() -> Result<PathBuf> {
     let cwd_path = PathBuf::from("bin/7zz");
     if cwd_path.exists() {
         return Ok(cwd_path);
+    }
+    // Standard Windows 7-Zip install locations. Probed before PATH because
+    // PATH can contain zero-length WindowsApps execution-alias stubs that
+    // exist but fail to spawn with os error 3.
+    for candidate in [
+        r"C:\Program Files\7-Zip\7z.exe",
+        r"C:\Program Files (x86)\7-Zip\7z.exe",
+    ] {
+        let path = PathBuf::from(candidate);
+        if path.is_file() {
+            return Ok(path);
+        }
     }
 
     // Try system PATH

@@ -224,10 +224,10 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "downloads a complete file; requires CLF3_MEGA_TEST_URL and CLF3_MEGA_TEST_HASH"]
+    #[ignore = "downloads a complete file; requires DSMODPACK_MEGA_TEST_URL and DSMODPACK_MEGA_TEST_HASH"]
     async fn test_live_mega_verified() {
-        let url = std::env::var("CLF3_MEGA_TEST_URL").unwrap();
-        let expected = std::env::var("CLF3_MEGA_TEST_HASH").unwrap();
+        let url = std::env::var("DSMODPACK_MEGA_TEST_URL").unwrap();
+        let expected = std::env::var("DSMODPACK_MEGA_TEST_HASH").unwrap();
         let dir = tempfile::tempdir().unwrap();
         let output = dir.path().join("verified.7z");
         let started = Instant::now();
@@ -297,9 +297,9 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires CLF3_MEGA_TEST_URL; stops after observing transfer progress"]
+    #[ignore = "requires DSMODPACK_MEGA_TEST_URL; stops after observing transfer progress"]
     async fn test_live_mega_progress() {
-        let url = std::env::var("CLF3_MEGA_TEST_URL").unwrap();
+        let url = std::env::var("DSMODPACK_MEGA_TEST_URL").unwrap();
         let dir = tempfile::tempdir().unwrap();
         let output = dir.path().join("partial.7z");
         let (tx, rx) = tokio::sync::oneshot::channel();

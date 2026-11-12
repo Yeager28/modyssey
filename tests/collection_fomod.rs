@@ -1,4 +1,4 @@
-use clf3::collection::fomod::{replay, Files, InstallerContext};
+use ds2modpack::collection::fomod::{replay, Files, InstallerContext};
 use serde_json::json;
 
 fn fixture(xml: &str) -> (tempfile::TempDir, Files) {

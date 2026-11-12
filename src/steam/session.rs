@@ -63,7 +63,7 @@ pub async fn connect_saved(store: &LoginStore) -> Result<SavedOutcome> {
             Ok(SavedOutcome::Rejected(saved))
         }
         Err(error) => Err(anyhow!(error).context(
-            "Could not reconnect to Steam. If this keeps happening, run `clf3 steam login --force`",
+            "Could not reconnect to Steam. If this keeps happening, run `ds2modpack steam login --force`",
         )),
     }
 }

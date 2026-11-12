@@ -4,7 +4,9 @@
 //! limit, and OpenMW itself works on one active profile at a time, so a second
 //! install (from the command line or from Fluorine) is refused while one runs.
 
-use anyhow::{bail, Context, Result};
+#[cfg(unix)]
+use anyhow::bail;
+use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
@@ -19,7 +21,7 @@ pub struct InstallLock {
 pub fn default_lock_path() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("clf3")
+        .join("ds2modpack")
         .join("momw-install.lock"))
 }
 
@@ -35,20 +37,31 @@ impl InstallLock {
             .write(true)
             .open(path)
             .with_context(|| format!("opening {}", path.display()))?;
-        use std::os::fd::AsRawFd;
-        // SAFETY: the descriptor is valid for the lifetime of `file`.
-        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+        #[cfg(unix)]
+        {
+            use std::os::fd::AsRawFd;
+            // SAFETY: the descriptor is valid for the lifetime of `file`.
+            if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+                let mut holder = String::new();
+                let _ = file.read_to_string(&mut holder);
+                let holder = holder.trim();
+                bail!(
+                    "another OpenMW list install is already running{}; wait for it to finish",
+                    if holder.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (process {holder})")
+                    }
+                );
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            // Windows has no flock. MOMW installs bundle Linux AppImages and
+            // are not usable there, so exclusion is best-effort there.
+            use std::io::Read;
             let mut holder = String::new();
             let _ = file.read_to_string(&mut holder);
-            let holder = holder.trim();
-            bail!(
-                "another OpenMW list install is already running{}; wait for it to finish",
-                if holder.is_empty() {
-                    String::new()
-                } else {
-                    format!(" (process {holder})")
-                }
-            );
         }
         file.set_len(0)?;
         file.rewind()?;
@@ -58,7 +71,7 @@ impl InstallLock {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

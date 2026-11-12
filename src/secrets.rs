@@ -17,9 +17,9 @@ use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 /// Keyring "service" CLF3's entries are filed under. Override with
-/// `CLF3_KEYRING_SERVICE` (used by tests so they never touch real entries).
-pub const DEFAULT_SERVICE: &str = "clf3";
-const SERVICE_ENV: &str = "CLF3_KEYRING_SERVICE";
+/// `DS2MODPACK_KEYRING_SERVICE` (used by tests so they never touch real entries).
+pub const DEFAULT_SERVICE: &str = "ds2modpack";
+const SERVICE_ENV: &str = "DS2MODPACK_KEYRING_SERVICE";
 
 /// Long enough for a user to answer an "unlock your wallet" prompt.
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(60);
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     #[ignore = "needs a running Secret Service (KWallet / GNOME Keyring)"]
     fn live_keyring_round_trip() {
-        let backend = KeyringBackend::new("clf3-live-test");
+        let backend = KeyringBackend::new("ds2modpack-live-test");
         let key = format!("probe-{}", std::process::id());
         assert_eq!(backend.get(&key).unwrap(), None);
         backend.set(&key, "s3cret value").unwrap();

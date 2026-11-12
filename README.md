@@ -1,27 +1,57 @@
-# CLF3
+# DS2 Modpack by Bonkfyre
 
-**DISCLAIMER** 
+**Multi-game modpack installer for Windows** — installs Wabbajack-format
+modlist archives (`.wabbajack`), focused on Dark Souls II: Scholar of the
+First Sin and extensible to more games.
 
-AI WAS USED AND IS STILL BEING USED IN THE MAKING OF THIS TOOL. I DO NOT HIDE THIS FACT!
+This is a rebranded fork of [CLF3](https://github.com/SulfurNitride/CLF3)
+(MIT) — see [ATTRIBUTION.md](ATTRIBUTION.md). Original code, MIT-licensed;
+the owner may distribute derived builds under any terms MIT permits.
 
-Do note a few things, this does not use the original tools for creating BSA files, and transforming DDS files. As a result, the modlist install will not be identical to Wabbajack or Jackify. Its primary focus is on speed, as a result some things are bound to fail. On top of this, do not report and issue to Wabbajack, or to the modlist authors. Instead, please open an issue inside the CLF3 Support thread inside [NaK Discord](https://discord.gg/9JWQzSeUWt). Plans are too eventually add Windows support and OpenMW support with Linux. The GUI is a work in progress so please do expect bugs. 
+## ⚠️ Hard rule for all contributors
 
-You can grab the latest version at the [release page](https://github.com/SulfurNitride/CLF3/releases). 
+**Never paste, port, or transliterate Wabbajack C# source code (or any other
+GPL-licensed implementation) into this repository.** This codebase's MIT
+license is only valid because it is an independent implementation of the
+documented `.wabbajack` format. Reference behavioral/format documentation
+(the Wabbajack wiki, format specs) only — never the source of
+`wabbajack-tools/wabbajack`, `modde-rs`, or any other GPL project. If you
+find yourself opening one of those codebases "just to check", stop and restate
+the behavior from documentation instead.
 
-If you want to support the things I put out, I do have a [Ko-Fi](https://ko-fi.com/sulfurnitride) I will never charge money for any of my content.
+## Features
 
----------------------------------------------------
-
-Modlist installer for Linux. Installs Wabbajack modlists without needing Windows.
-
-Named after Chlorine Trifluoride - burns through modlists like ClF3 burns through concrete.
+- **Modlist installation**: parses `.wabbajack` modlists, downloads archives
+  (Nexus, HTTP, Mega, MediaFire, Google Drive, LoversLab, Steam game files,
+  manual sources), hash-verifies everything, and applies install directives
+  (FromArchive, PatchedFromArchive with OctoDiff deltas, Inline/RemappedInline
+  files, TransformedTexture with GPU DDS re-encode, CreateBSA).
+- **Game detection**: registry, Steam library manifests, and Heroic/GOG
+  discovery for known games (Dark Souls II SOTFS included).
+- **GUI**: egui modlist browser + collections UI (`ds2modpack browser`).
+- **CLI**: full install pipeline, modlist info, updates, Nexus collection
+  planning, MOMW (Modding-OpenMW) installs (Linux-only tooling), Steam login,
+  game file index.
 
 ## Build
 
-```bash
-git clone https://github.com/SulfurNitride/CLF3.git
-cd CLF3
+```powershell
 cargo build --release
 ```
 
-Binary will be at `target/release/clf3`
+Binary: `target/release/ds2modpack.exe`. Rust stable (MSVC toolchain) with
+Visual Studio Build Tools (MSVC + Windows SDK) required.
+
+## Usage
+
+```text
+ds2modpack                       # GUI modlist browser
+ds2modpack info LIST.wabbajack   # inspect a modlist
+ds2modpack install LIST.wabbajack --downloads DIR --output DIR [--game DIR]
+ds2modpack help                  # everything else
+```
+
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright © SulfurNitride (CLF3 upstream) and
+Bonkfyre (this fork).

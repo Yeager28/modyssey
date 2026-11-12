@@ -189,7 +189,7 @@ pub(crate) fn store_patched_output_in_cache(
 pub(crate) fn should_preload_patch_blobs() -> bool {
     static SHOULD_PRELOAD: OnceLock<bool> = OnceLock::new();
     *SHOULD_PRELOAD.get_or_init(|| {
-        if let Ok(v) = std::env::var("CLF3_PRELOAD_PATCH_BLOBS") {
+        if let Ok(v) = std::env::var("DSMODPACK_PRELOAD_PATCH_BLOBS") {
             let value = v.trim().to_ascii_lowercase();
             return matches!(value.as_str(), "1" | "true" | "yes" | "on");
         }
@@ -725,7 +725,7 @@ impl<'a> ProcessContext<'a> {
         // Use local cache directory to avoid CIFS/NFS locking issues
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("clf3");
+            .join("ds2modpack");
         let _ = std::fs::create_dir_all(&cache_dir);
         let cache_path = cache_dir.join("extraction_cache.db");
         let extraction_cache =
@@ -1172,7 +1172,7 @@ fn is_bsa_file(path: &str) -> bool {
 /// Get the working folder for BSA files extracted from archives
 /// Stays in downloads_dir since BSA files can be very large (gigabytes)
 fn get_bsa_working_dir(downloads_dir: &Path) -> PathBuf {
-    downloads_dir.join(".clf3_bsa_working")
+    downloads_dir.join(".ds2modpack_bsa_working")
 }
 
 /// Generate a stable filename for a BSA in the working folder
@@ -1590,7 +1590,7 @@ fn cleanup_extra_files(db: &ModlistDb, ctx: &ProcessContext) -> Result<()> {
             if entry
                 .path()
                 .extension()
-                .map(|e| e == "clf3hash" || e == "clf3manifest")
+                .map(|e| e == "ds2modpack-hash" || e == "ds2modpack-manifest")
                 .unwrap_or(false)
             {
                 continue;
@@ -1883,7 +1883,7 @@ fn read_nested_texture_source(
         return Ok(data);
     }
     let nested = tempfile::Builder::new()
-        .prefix(".clf3_texture_archive_")
+        .prefix("ds2modpack_texture_archive_")
         .tempfile_in(temp_root)?;
     fs::write(nested.path(), data)?;
     read_nested_texture_source(nested.path(), remaining, temp_root)
@@ -2107,7 +2107,7 @@ fn process_transformed_texture(
                     };
                     if let Some(data) = bsa_data {
                         if let Ok(temp_bsa) = tempfile::Builder::new()
-                            .prefix(".clf3_texture_archive_")
+                            .prefix("ds2modpack_texture_archive_")
                             .tempfile_in(&ctx.config.output_dir)
                         {
                             if fs::write(temp_bsa.path(), &data).is_ok() {
@@ -2702,9 +2702,9 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires CLF3_MCM_ARCHIVE pointing to the downloaded MCM 1.5 archive"]
+    #[ignore = "requires DSMODPACK_MCM_ARCHIVE pointing to the downloaded MCM 1.5 archive"]
     fn test_nested_texture_real_mcm_archive() {
-        let archive = PathBuf::from(std::env::var_os("CLF3_MCM_ARCHIVE").unwrap());
+        let archive = PathBuf::from(std::env::var_os("DSMODPACK_MCM_ARCHIVE").unwrap());
         let tmp = tempdir().unwrap();
         for name in [
             "Meter",

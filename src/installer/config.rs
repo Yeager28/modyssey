@@ -195,7 +195,7 @@ impl InstallConfig {
         // Store in local cache directory to avoid CIFS/NFS locking issues
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("clf3");
+            .join("ds2modpack");
 
         // Create cache directory if it doesn't exist
         let _ = std::fs::create_dir_all(&cache_dir);

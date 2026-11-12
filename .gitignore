@@ -4,17 +4,25 @@
 *.db
 *.db-journal
 
+# Local verification scratch (extracted manifests etc.)
+/tmp-verify
+
+# Read-only upstream reference clone (kept locally, not part of the project)
+/clf3-upstream
+
 # Claude/AI tool configs
 .claude/
 .claude-flow/
 .hive-mind/
-.swarm/
-.mcp.json
 CLAUDE.md
 
 # Local installer runs and standalone build output
 *.log
 /clf3-linux-x86_64
+
+# Local dev notes and milestone reports (never published)
+/VERDICT.md
+/M0-REPORT.md
 
 # Generated Python bytecode
 __pycache__/

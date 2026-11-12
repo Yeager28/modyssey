@@ -482,7 +482,7 @@ where
 fn ttw_installer_cache_path() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("clf3")
+        .join("ds2modpack")
         .join("bin")
         .join(TTW_INSTALLER_BINARY)
 }
@@ -547,7 +547,7 @@ fn download_ttw_installer() -> Result<PathBuf> {
     info!("Fetching release info from: {}", api_url);
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent("clf3")
+        .user_agent("ds2modpack")
         .build()
         .context("Failed to create HTTP client")?;
 
@@ -726,7 +726,7 @@ pub fn check_ttw_installer_update() -> Result<Option<String>> {
     );
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent("clf3")
+        .user_agent("ds2modpack")
         .build()?;
 
     let response = client.get(&api_url).send()?;

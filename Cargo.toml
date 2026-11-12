@@ -1,19 +1,19 @@
 [package]
-name = "clf3"
+name = "ds2modpack"
 version = "0.2.9"
 edition = "2021"
-description = "Wabbajack and Nexus Collections installer for Linux"
+description = "DS2 Modpack by Bonkfyre — multi-game modpack installer"
 license = "MIT"
-repository = "https://github.com/SulfurNitride/CLF3"
+repository = "https://github.com/himanshudbg/ds2-modpack-app"
+authors = ["Bonkfyre"]
 
 [lib]
-name = "clf3"
+name = "ds2modpack"
 path = "src/lib.rs"
 
 [[bin]]
-name = "clf3"
+name = "ds2modpack"
 path = "src/main.rs"
-
 [dependencies]
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

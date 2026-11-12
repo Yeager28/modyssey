@@ -1,7 +1,7 @@
-//! CLF3 - Wabbajack Modlist Installer
+//! DS2 Modpack by Bonkfyre — multi-game modpack installer.
 //!
-//! Named after Chlorine Trifluoride - burns through modlists
-//! like CLF3 burns through concrete.
+//! Derivative work of CLF3 (MIT, © SulfurNitride) — see ATTRIBUTION.md and
+//! LICENSE in the repository root.
 
 pub mod archive;
 pub mod bsa;

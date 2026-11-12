@@ -31,7 +31,7 @@ pub fn check(token: &CancellationToken) -> Result<()> {
 
 fn archive_client() -> Result<Client> {
     Ok(Client::builder()
-        .user_agent("CLF3/collections")
+        .user_agent("ds2modpack/collections")
         .connect_timeout(Duration::from_secs(20))
         .timeout(Duration::from_secs(120))
         .redirect(Policy::custom(|attempt| {
@@ -92,7 +92,7 @@ impl Nexus {
         header.set_sensitive(true);
         Ok(Self {
             api: Client::builder()
-                .user_agent("CLF3/collections")
+                .user_agent("ds2modpack/collections")
                 .redirect(Policy::none())
                 .connect_timeout(Duration::from_secs(20))
                 .timeout(Duration::from_secs(45))

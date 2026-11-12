@@ -1,4 +1,4 @@
-use clf3::collection::{
+use ds2modpack::collection::{
     host::CollectionHostCommand, paths::relative_path, url::parse_collection_url,
     CollectionPackage, CollectionPlan, PlanOptions,
 };
@@ -431,7 +431,7 @@ fn raw_install_preserves_framework_paths_and_only_peels_confirmed_wrappers() {
         let (package, plan, artifacts) = archive_fixture(&temp, &[(source, b"payload")], vec![]);
         let root = temp.path().join("job");
         let job =
-            clf3::collection::stage::stage(&package, &plan, &artifacts, &root, &Default::default())
+            ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &root, &Default::default())
                 .unwrap();
         let staged = &job.members[&plan.members[0].id];
         assert_eq!(staged.files.len(), 1);
@@ -483,7 +483,7 @@ fn raw_install_matches_basic_prefix_selection_and_retains_other_variants() {
     ] {
         let temp = tempfile::tempdir().unwrap();
         let (package, plan, artifacts) = archive_fixture(&temp, &files, vec![]);
-        let job = clf3::collection::stage::stage(
+        let job = ds2modpack::collection::stage::stage(
             &package,
             &plan,
             &artifacts,
@@ -513,7 +513,7 @@ fn recorded_files_reuse_identical_content_at_multiple_destinations() {
             json!({"path":"b.txt","md5":hash}),
         ],
     );
-    let job = clf3::collection::stage::stage(
+    let job = ds2modpack::collection::stage::stage(
         &package,
         &plan,
         &artifacts,
@@ -556,7 +556,7 @@ fn missing_recorded_outputs_and_fresh_fomods_never_complete_a_member() {
             records,
         );
         let output = temp.path().join("job");
-        assert!(clf3::collection::stage::stage(
+        assert!(ds2modpack::collection::stage::stage(
             &package,
             &plan,
             &artifacts,
@@ -600,7 +600,7 @@ fn patches_apply_before_root_routing_and_crc_failures_block_completion() {
         std::fs::write(root.join("patches/A/skse64_loader.exe.diff"), diff).unwrap();
         let package = CollectionPackage::open(&root).unwrap();
         let plan = CollectionPlan::build(&package, &options()).unwrap();
-        let result = clf3::collection::stage::stage(
+        let result = ds2modpack::collection::stage::stage(
             &package,
             &plan,
             &artifacts,
@@ -631,17 +631,17 @@ fn resume_verifies_outputs_and_preserves_modified_old_generations() {
     let (package, plan, artifacts) = archive_fixture(&temp, &[("test.esp", b"original")], vec![]);
     let output = temp.path().join("job");
     let first =
-        clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
+        ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
             .unwrap();
     let second =
-        clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
+        ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
             .unwrap();
     let id = &plan.members[0].id;
     assert_eq!(first.members[id].directory, second.members[id].directory);
     let old = output.join(&first.members[id].directory).join("test.esp");
     std::fs::write(&old, b"user modification").unwrap();
     let repaired =
-        clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
+        ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
             .unwrap();
     assert_ne!(first.members[id].directory, repaired.members[id].directory);
     assert_eq!(std::fs::read(&old).unwrap(), b"user modification");
@@ -667,14 +667,14 @@ fn indexed_resume_rejects_split_directory_case_without_losing_old_files() {
     );
     let output = temp.path().join("job");
     let first =
-        clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
+        ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
             .unwrap();
     let id = &plan.members[0].id;
     let old = output.join(&first.members[id].directory);
     std::fs::create_dir(old.join("meshes")).unwrap();
     std::fs::rename(old.join("Meshes/B.nif"), old.join("meshes/B.nif")).unwrap();
     let repaired =
-        clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
+        ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &Default::default())
             .unwrap();
     assert_ne!(first.members[id].directory, repaired.members[id].directory);
     assert_eq!(std::fs::read(old.join("meshes/B.nif")).unwrap(), b"b");
@@ -691,7 +691,7 @@ fn staging_refuses_existing_instances_and_records_cancellation() {
     let live = temp.path().join("live");
     std::fs::create_dir(&live).unwrap();
     std::fs::write(live.join("ModOrganizer.ini"), b"untouched").unwrap();
-    assert!(clf3::collection::stage::stage(
+    assert!(ds2modpack::collection::stage::stage(
         &package,
         &plan,
         &artifacts,
@@ -703,7 +703,7 @@ fn staging_refuses_existing_instances_and_records_cancellation() {
     let token = tokio_util::sync::CancellationToken::new();
     token.cancel();
     let output = temp.path().join("cancelled");
-    assert!(clf3::collection::stage::stage(&package, &plan, &artifacts, &output, &token).is_err());
+    assert!(ds2modpack::collection::stage::stage(&package, &plan, &artifacts, &output, &token).is_err());
     let journal: Value =
         serde_json::from_slice(&std::fs::read(output.join("collection-job.json")).unwrap())
             .unwrap();
@@ -727,7 +727,7 @@ fn bundle_exclusions_are_retained_for_host_publication() {
     .unwrap();
     let package = CollectionPackage::open(&root).unwrap();
     let plan = CollectionPlan::build(&package, &options()).unwrap();
-    let staged = clf3::collection::stage::stage(
+    let staged = ds2modpack::collection::stage::stage(
         &package,
         &plan,
         &Default::default(),

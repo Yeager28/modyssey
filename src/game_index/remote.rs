@@ -37,7 +37,7 @@ pub struct HttpPartSource {
 impl HttpPartSource {
     pub fn new(base_url: &str) -> Result<Self> {
         let client = reqwest::blocking::Client::builder()
-            .user_agent(concat!("clf3/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("ds2modpack/", env!("CARGO_PKG_VERSION")))
             .timeout(PART_TIMEOUT)
             .build()
             .context("Failed to create HTTP client")?;

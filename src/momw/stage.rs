@@ -202,7 +202,7 @@ pub fn extract_into(archive: &Path, dest: &Path, wrapper: Wrapper) -> Result<()>
                 .with_context(|| format!("extracting {}", archive.display()))?;
         }
         Wrapper::Strip => {
-            let tmp = dest.join(".clf3-unwrap");
+            let tmp = dest.join(".ds2modpack-unwrap");
             if tmp.exists() {
                 std::fs::remove_dir_all(&tmp)?;
             }
@@ -326,7 +326,7 @@ fn names(path: &Path) -> Vec<String> {
         .collect()
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use crate::momw::plan::DataEntry;
@@ -442,7 +442,7 @@ mod tests {
         extract_into(&zip, &stripped, Wrapper::Strip).unwrap();
         assert!(stripped.join("proj.omwaddon").is_file());
         assert!(stripped.join("meshes/a.nif").is_file());
-        assert!(!stripped.join(".clf3-unwrap").exists());
+        assert!(!stripped.join(".ds2modpack-unwrap").exists());
     }
 
     fn plan_with(entries: Vec<(usize, &str, &str, &str)>) -> MomwPlan {

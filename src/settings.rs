@@ -181,7 +181,7 @@ impl Settings {
     pub(crate) fn config_dir() -> Result<PathBuf> {
         let config_dir = dirs::config_dir()
             .context("Could not determine config directory")?
-            .join("clf3");
+            .join("ds2modpack");
 
         Ok(config_dir)
     }
@@ -362,7 +362,7 @@ mod tests {
             ttw_mpi_path: String::new(),
             fallout3_path: String::new(),
             ttw_output_path: String::new(),
-            patch_cache_dir: "/home/user/.cache/clf3/patches".into(),
+            patch_cache_dir: "/home/user/.cache/ds2modpack/patches".into(),
             loverslab_email: String::new(),
             loverslab_password: String::new(),
             browser_game_filter: String::new(),

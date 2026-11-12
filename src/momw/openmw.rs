@@ -64,7 +64,7 @@ impl Release {
 pub fn default_store_dir() -> Result<PathBuf> {
     Ok(dirs::data_local_dir()
         .context("could not find the local data directory")?
-        .join("clf3")
+        .join("ds2modpack")
         .join("openmw"))
 }
 
@@ -86,9 +86,9 @@ fn is_stable(version: &str) -> bool {
 fn client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
         .user_agent(concat!(
-            "CLF3/",
+            "ds2modpack/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/SulfurNitride/CLF3)"
+            " (+https://github.com/himanshudbg/ds2-modpack-app)"
         ))
         .build()?)
 }
@@ -211,6 +211,7 @@ pub async fn ensure_release(store: &Path, channel: &Channel) -> Result<Release> 
 
 /// Keep the engine, ini importer and navmesh tool from the release archive.
 fn extract_programs(archive: &Path, dest: &Path, version: &str) -> Result<()> {
+    #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
     let wanted: Vec<String> = PROGRAMS
         .iter()
@@ -226,7 +227,8 @@ fn extract_programs(archive: &Path, dest: &Path, version: &str) -> Result<()> {
         if wanted.contains(&name) {
             let tmp = dest.join(format!("{name}.partial"));
             entry.unpack(&tmp)?;
-            std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
+        #[cfg(unix)]
+         std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o755))?;
             std::fs::rename(&tmp, dest.join(&name))?;
         }
     }
@@ -307,7 +309,8 @@ exec "$ROOT/openmw/bin/openmw" --replace=config --config "$PROFILE" \
 /// programs are hard-linked from the store when possible (no extra disk) and
 /// copied otherwise.
 pub fn bundle(root: &Path, release: &Release) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
+    #[cfg(unix)]
+     use std::os::unix::fs::PermissionsExt;
     let dir = root.join("openmw");
     let bin = dir.join("bin");
     std::fs::create_dir_all(&bin)?;
@@ -321,7 +324,8 @@ pub fn bundle(root: &Path, release: &Release) -> Result<()> {
         }
         let wrapper = bin.join(command);
         std::fs::write(&wrapper, wrapper_script(&release.version, program))?;
-        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
+        #[cfg(unix)]
+         std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
     }
     // Leave only this release's programs behind (an upgrade replaces them).
     for entry in std::fs::read_dir(&dir)?.filter_map(Result::ok) {
@@ -339,7 +343,8 @@ pub fn bundle(root: &Path, release: &Release) -> Result<()> {
     std::fs::write(dir.join("VERSION"), format!("{}\n", release.version))?;
     let launcher = root.join("Launch OpenMW.sh");
     std::fs::write(&launcher, LAUNCH_SCRIPT)?;
-    std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755))?;
+    #[cfg(unix)]
+     std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o755))?;
     Ok(())
 }
 
@@ -365,7 +370,8 @@ fn desktop_entry(root: &Path, title: &str) -> String {
 /// Add the instance to the desktop's application menu. `applications` is
 /// normally `~/.local/share/applications`; returns the file written.
 pub fn install_desktop_entry(root: &Path, title: &str, applications: &Path) -> Result<PathBuf> {
-    use std::os::unix::fs::PermissionsExt;
+    #[cfg(unix)]
+     use std::os::unix::fs::PermissionsExt;
     let slug: String = root
         .file_name()
         .map(|n| n.to_string_lossy().to_lowercase())
@@ -374,9 +380,10 @@ pub fn install_desktop_entry(root: &Path, title: &str, applications: &Path) -> R
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect();
     std::fs::create_dir_all(applications)?;
-    let file = applications.join(format!("clf3-openmw-{}.desktop", slug.trim_matches('-')));
+    let file = applications.join(format!("ds2modpack-openmw-{}.desktop", slug.trim_matches('-')));
     std::fs::write(&file, desktop_entry(root, title))?;
-    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755))?;
+    #[cfg(unix)]
+     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755))?;
     Ok(file)
 }
 
@@ -402,7 +409,7 @@ pub fn program(root: &Path, command: &str) -> PathBuf {
     root.join("openmw").join("bin").join(command)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
@@ -623,7 +630,7 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         let apps = dir.path().join("apps");
         let file = install_desktop_entry(&root, "My List", &apps).unwrap();
-        assert_eq!(file.file_name().unwrap(), "clf3-openmw-my-list.desktop");
+        assert_eq!(file.file_name().unwrap(), "ds2modpack-openmw-my-list.desktop");
         let text = std::fs::read_to_string(&file).unwrap();
         assert!(text.contains("Name=My List (OpenMW)"), "{text}");
         assert!(

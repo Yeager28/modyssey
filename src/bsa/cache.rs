@@ -37,7 +37,7 @@ impl BsaCache {
     /// Create a new cache in a temp file
     pub fn new() -> Result<Self> {
         let db_path =
-            std::env::temp_dir().join(format!("clf3_bsa_cache_{}.db", std::process::id()));
+            std::env::temp_dir().join(format!("ds2modpack_bsa_cache_{}.db", std::process::id()));
 
         let conn = Connection::open(&db_path)
             .with_context(|| format!("Failed to create cache at {}", db_path.display()))?;

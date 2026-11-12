@@ -153,7 +153,7 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
         .map(|s| sidecar::normalize_manifest_path(s.path()))
         .collect();
     files.retain(|(name, _)| {
-        !name.ends_with(".clf3hash") || expected.contains(&sidecar::normalize_manifest_path(name))
+        !name.ends_with(".ds2modpack-hash") || expected.contains(&sidecar::normalize_manifest_path(name))
     });
     validate_members(
         files.iter().map(|(name, _)| name.as_str()),
@@ -171,7 +171,7 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
     let output_path = ctx.resolve_output_path(&directive.to);
     ctx.dir_cache.ensure_parent_dirs(&output_path)?;
     let temporary = tempfile::Builder::new()
-        .prefix(".clf3-build-")
+        .prefix(".ds2modpack-build-")
         .suffix(&format!(
             ".{}",
             output_path
@@ -309,7 +309,7 @@ pub fn handle_create_bsa(ctx: &ProcessContext, directive: &CreateBSADirective) -
 
 /// Check if a CreateBSA output already exists and is valid.
 ///
-/// Uses sidecar hash cache: checks that the `.clf3hash` sidecar matches the
+/// Uses sidecar hash cache: checks that the `.ds2modpack-hash` sidecar matches the
 /// directive's expected hash and the file size hasn't changed (corruption check).
 pub fn output_bsa_valid(ctx: &ProcessContext, directive: &CreateBSADirective) -> bool {
     let output_path = ctx.resolve_output_path(&directive.to);

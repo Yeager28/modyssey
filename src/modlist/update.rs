@@ -179,7 +179,7 @@ pub fn resolve_query(
     let matches: Vec<&ModlistMetadata> = gallery.iter().filter(|m| m.matches_query(q)).collect();
     match matches.len() {
         0 => Err(anyhow!(
-            "No modlist matches '{}'. Try `clf3 browser` to see available modlists.",
+            "No modlist matches '{}'. Try `ds2modpack browser` to see available modlists.",
             q
         )),
         1 => Ok(matches[0].machine_name.clone()),
@@ -278,7 +278,7 @@ fn status_string(cmp: &VersionCmp) -> &'static str {
 /// Format reports as a human-readable table.
 pub fn format_table(reports: &[UpdateReport]) -> String {
     if reports.is_empty() {
-        return "No tracked installs found. Install a modlist via `clf3 install` first.\n".into();
+        return "No tracked installs found. Install a modlist via `ds2modpack install` first.\n".into();
     }
 
     let mut col_name = "Modlist".len();
@@ -345,7 +345,7 @@ pub fn format_table(reports: &[UpdateReport]) -> String {
     let updatable = reports.iter().filter(|r| r.update_available).count();
     if updatable > 0 {
         out.push_str(&format!(
-            "\n{} update(s) available. Run `clf3 modlist update <machine_name>` to apply.\n",
+            "\n{} update(s) available. Run `ds2modpack modlist update <machine_name>` to apply.\n",
             updatable
         ));
     } else {

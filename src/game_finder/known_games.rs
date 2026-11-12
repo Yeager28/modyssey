@@ -120,6 +120,18 @@ pub const KNOWN_GAMES: &[KnownGame] = &[
         wabbajack_type: Some("FalloutNewVegas"),
     },
     KnownGame {
+        name: "Dark Souls II: Scholar of the First Sin",
+        steam_app_id: "335300",
+        gog_app_id: None, // DS2 SOTFS is Steam-only; no GOG release exists
+        my_games_folder: Some("NBGI\\DarkSoulsII"), // per-user settings
+        appdata_local_folder: None,
+        appdata_roaming_folder: None,
+        registry_path: r"Software\Namco Bandai Games\Dark Souls II",
+        registry_value: "InstallPath",
+        steam_folder: "Dark Souls II Scholar of the First Sin",
+        wabbajack_type: Some("DarkSoulsII"),
+    },
+    KnownGame {
         name: "Morrowind",
         steam_app_id: "22320",
         gog_app_id: Some("1440163901"), // Morrowind GOTY

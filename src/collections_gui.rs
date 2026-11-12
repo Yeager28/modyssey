@@ -1,10 +1,10 @@
 //! Standalone Collections view. Long-running I/O stays in application services.
-use clf3::collection::{
+use ds2modpack::collection::{
     progress::{safe_message, WorkerEvent},
     publish::PublicationReport,
     worker::read_json,
 };
-use clf3::collection_app::{self as app, Event, Inputs, MissingArtifact, Prepared};
+use ds2modpack::collection_app::{self as app, Event, Inputs, MissingArtifact, Prepared};
 use eframe::egui;
 use std::{
     collections::BTreeMap,
@@ -257,11 +257,11 @@ impl CollectionsView {
     }
 
     fn load(&mut self, ctx: &egui::Context, key: &str) {
-        if let Ok(locator) = clf3::collection::url::parse_collection_url(self.inputs.source.trim())
+        if let Ok(locator) = ds2modpack::collection::url::parse_collection_url(self.inputs.source.trim())
         {
             // A VR edition shares its base game's Nexus domain, so keep a game
             // the user chose when it is filed under this collection's domain.
-            let chosen_matches = clf3::collection::games::profile(&self.selected_game)
+            let chosen_matches = ds2modpack::collection::games::profile(&self.selected_game)
                 .is_some_and(|g| g.nexus_domain() == locator.domain);
             if !chosen_matches {
                 self.select_game(&locator.domain);
@@ -305,7 +305,7 @@ impl CollectionsView {
         let executable = self.executable.clone();
         self.task("Checking installation paths", ctx, move |token, events| {
             let executable = executable
-                .ok_or_else(|| anyhow::anyhow!("Could not locate the CLF3 executable"))?;
+                .ok_or_else(|| anyhow::anyhow!("Could not locate the DS2 Modpack executable"))?;
             app::install(&prepared, &key, &executable, token, events)
         });
     }
@@ -334,7 +334,7 @@ impl CollectionsView {
                 ui.heading("Install collection");
                 ui.label("Install a pinned Nexus collection into its own folder.");
                 ui.horizontal(|ui| {
-                    let game = clf3::collection::games::profile(&self.selected_game);
+                    let game = ds2modpack::collection::games::profile(&self.selected_game);
                     ui.small(game.map_or("Unsupported game", |g| g.name));
                     ui.separator();
                     ui.small(if key.is_empty() { "Nexus account not configured" } else { "Saved Nexus key available" });
@@ -343,8 +343,8 @@ impl CollectionsView {
                 ui.add_space(10.0);
                 ui.add_enabled_ui(!self.busy, |ui| {
                     let mut selected_game = self.selected_game.clone();
-                    egui::ComboBox::from_id_salt("collection_install_game").selected_text(clf3::collection::games::profile(&selected_game).map_or("Choose game", |g| g.name)).show_ui(ui, |ui| {
-                        for profile in clf3::collection::games::PROFILES {
+                    egui::ComboBox::from_id_salt("collection_install_game").selected_text(ds2modpack::collection::games::profile(&selected_game).map_or("Choose game", |g| g.name)).show_ui(ui, |ui| {
+                        for profile in ds2modpack::collection::games::PROFILES {
                             ui.selectable_value(&mut selected_game, profile.domain.into(), format!("{}{}", profile.name, if profile.experimental { " (experimental)" } else { "" }));
                         }
                     });

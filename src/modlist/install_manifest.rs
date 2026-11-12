@@ -1,6 +1,6 @@
 //! Post-install manifest written next to a finished modlist install.
 //!
-//! After a successful `clf3 install`, we drop a small `.clf3-install.json`
+//! After a successful `clf3 install`, we drop a small `.ds2modpack-install.json`
 //! file inside the install dir. It records which Wabbajack modlist + version
 //! we installed and where its downloads live, so later runs of `clf3 modlist
 //! check` / `clf3 modlist update` can offer to refresh the install.
@@ -34,11 +34,11 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-/// Current on-disk schema version for `.clf3-install.json`.
+/// Current on-disk schema version for `.ds2modpack-install.json`.
 pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
 /// Filename of the manifest inside an install directory.
-pub const MANIFEST_FILENAME: &str = ".clf3-install.json";
+pub const MANIFEST_FILENAME: &str = ".ds2modpack-install.json";
 
 /// Manifest written into an install directory after a successful install.
 #[derive(Debug, Clone, Serialize, Deserialize)]

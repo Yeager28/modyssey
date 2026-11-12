@@ -86,7 +86,7 @@ pub fn handle_patched_from_archive(
             let bsa_data =
                 extract_from_archive_with_temp(&archive_path, bsa_path, &ctx.config.downloads_dir)?;
             let temp_bsa = tempfile::Builder::new()
-                .prefix(".clf3_bsa_")
+                .prefix(".ds2modpack_bsa_")
                 .suffix(".bsa")
                 .tempfile_in(&ctx.config.downloads_dir)
                 .context("Failed to create temp BSA file")?;

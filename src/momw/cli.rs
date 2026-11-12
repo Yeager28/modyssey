@@ -351,7 +351,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
 
             let key = crate::settings::Settings::load().nexus_api_key;
             if key.trim().is_empty() {
-                bail!("no Nexus API key is saved in the CLF3 settings");
+                bail!("no Nexus API key is saved in the DS2 Modpack settings");
             }
             let (access, lister) = api_nexus(key.trim())?;
             let sink: super::pipeline::EventSink = std::sync::Arc::new(|event| match event {
@@ -415,7 +415,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
                 if plan.momw_version.as_deref() != Some(installed.as_str()) {
                     bail!(
                         "this instance was installed from {slug} {installed}, but the site now \
-                         serves {}. Run `clf3 momw install` to update it.",
+                         serves {}. Run `ds2modpack momw install` to update it.",
                         plan.momw_version.as_deref().unwrap_or("a newer version")
                     );
                 }
@@ -518,7 +518,7 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
                     inner: crate::downloaders::NexusDownloader::new(key)?,
                     dir: dirs::cache_dir()
                         .context("could not find the cache directory")?
-                        .join("clf3")
+                        .join("ds2modpack")
                         .join("nexus-files"),
                     ttl: std::time::Duration::from_secs(24 * 3600),
                 };
@@ -574,12 +574,12 @@ pub async fn run(args: &MomwArgs) -> Result<()> {
             let plan = build_plan_with_host(&data, &host);
             let key = crate::settings::Settings::load().nexus_api_key;
             if key.trim().is_empty() {
-                bail!("no Nexus API key is saved in the CLF3 settings");
+                bail!("no Nexus API key is saved in the DS2 Modpack settings");
             }
             let nexus = crate::downloaders::NexusDownloader::new(key.trim())?;
             let cache_dir = dirs::cache_dir()
                 .context("could not find the cache directory")?
-                .join("clf3")
+                .join("ds2modpack")
                 .join("nexus-files");
             let lister = super::nexus::DiskCache {
                 inner: nexus,
@@ -697,7 +697,7 @@ fn api_nexus(
         inner: crate::downloaders::NexusDownloader::new(key)?,
         dir: dirs::cache_dir()
             .context("could not find the cache directory")?
-            .join("clf3")
+            .join("ds2modpack")
             .join("nexus-files"),
         ttl: std::time::Duration::from_secs(24 * 3600),
     };

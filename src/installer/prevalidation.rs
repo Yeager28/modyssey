@@ -203,7 +203,7 @@ pub fn run_prevalidation(
         .keys()
         .filter(|path| {
             // Skip sidecar/manifest files
-            if path.ends_with(".clf3hash") || path.ends_with(".clf3manifest") {
+            if path.ends_with(".ds2modpack-hash") || path.ends_with(".ds2modpack-manifest") {
                 return false;
             }
             // Skip downloads directory

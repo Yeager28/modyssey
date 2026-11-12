@@ -178,7 +178,7 @@ impl Catalog {
         Ok(Self {
             api: Nexus::new("")?,
             images: reqwest::blocking::Client::builder()
-                .user_agent("CLF3/collections")
+                .user_agent("ds2modpack/collections")
                 .connect_timeout(Duration::from_secs(10))
                 .timeout(Duration::from_secs(25))
                 .redirect(reqwest::redirect::Policy::custom(|attempt| {

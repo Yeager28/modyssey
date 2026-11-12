@@ -880,7 +880,7 @@ fn extract_prepared_archive(
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open("/tmp/clf3_rss.log")
+        .open("/tmp/ds2modpack_rss.log")
     {
         use std::io::Write;
         let _ = writeln!(
@@ -1943,7 +1943,7 @@ pub(crate) fn run_processing_loop_phased(
 
     // DDS spill: extraction threads send raw texture data through this channel.
     // A collector thread writes them to temp files on disk. Phase 2 processes them all at once.
-    let dds_spill_dir = ctx.config.output_dir.join(".clf3_dds_spill");
+    let dds_spill_dir = ctx.config.output_dir.join(".ds2modpack_dds_spill");
     if dds_spill_dir.exists() {
         let _ = std::fs::remove_dir_all(&dds_spill_dir);
     }

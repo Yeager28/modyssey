@@ -168,7 +168,7 @@ impl GpuEncoder {
         // Request device
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
-                label: Some("CLF3 GPU Encoder"),
+                label: Some("DS2 Modpack GPU Encoder"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::default(),
                 ..Default::default()

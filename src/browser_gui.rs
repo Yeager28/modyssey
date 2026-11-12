@@ -30,14 +30,14 @@ const ROW_HEIGHT: f32 = 120.0;
 pub fn launch_browser() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("CLF3 — Modlist Browser")
+            .with_title("DS2 Modpack by Bonkfyre")
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([800.0, 600.0]),
         ..Default::default()
     };
 
     eframe::run_native(
-        "clf3_browser",
+        "ds2modpack_browser",
         options,
         Box::new(|cc| {
             // Install image loaders so egui_extras can decode PNG/JPEG/etc.
@@ -176,10 +176,18 @@ impl Drop for BrowserApp {
 }
 
 impl BrowserApp {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // Brand theme: dark visuals with a gold accent.
+        let mut visuals = egui::Visuals::dark();
+        visuals.widgets.inactive.fg_stroke.color = egui::Color32::from_rgb(212, 175, 55);
+        visuals.widgets.hovered.fg_stroke.color = egui::Color32::from_rgb(240, 205, 90);
+        visuals.widgets.active.fg_stroke.color = egui::Color32::from_rgb(240, 205, 90);
+        visuals.hyperlink_color = egui::Color32::from_rgb(212, 175, 55);
+        cc.egui_ctx.set_visuals(visuals);
+
         let image_cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join("clf3")
+            .join("ds2modpack")
             .join("images");
         let _ = std::fs::create_dir_all(&image_cache_dir);
 
@@ -207,7 +215,7 @@ impl BrowserApp {
         let settings = Settings::load();
         let downloads_dir = settings.default_downloads_dir.clone();
         let install_dir = settings.default_install_dir.clone();
-        let collection_games = clf3::collection::games::PROFILES
+        let collection_games = ds2modpack::collection::games::PROFILES
             .iter()
             .filter_map(|profile| {
                 detected
@@ -627,7 +635,7 @@ impl BrowserApp {
         }
         let exe = std::env::current_exe()
             .map(|p| p.display().to_string())
-            .unwrap_or_else(|_| "clf3".into());
+            .unwrap_or_else(|_| "ds2modpack".into());
         let mut parts = vec![
             shell_quote(&exe),
             "install".to_string(),
@@ -645,7 +653,7 @@ impl BrowserApp {
         if self.downloads_dir.is_empty() || self.install_dir.is_empty() {
             return None;
         }
-        let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("clf3"));
+        let exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("ds2modpack"));
         let mut args = vec![
             "install".into(),
             source.into(),

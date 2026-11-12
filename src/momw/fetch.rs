@@ -48,9 +48,9 @@ impl Fetcher {
             http: HttpClient::new()?,
             api: reqwest::Client::builder()
                 .user_agent(concat!(
-                    "CLF3/",
+                    "ds2modpack/",
                     env!("CARGO_PKG_VERSION"),
-                    " (+https://github.com/SulfurNitride/CLF3)"
+                    " (+https://github.com/himanshudbg/ds2-modpack-app)"
                 ))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?,
