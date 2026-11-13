@@ -360,9 +360,9 @@ where
     let mut matching: Vec<(usize, String)> = Vec::new();
     for i in 0..archive.len() {
         let entry = archive.by_index_raw(i)?;
-        let normalized = normalize_path(entry.name());
+        let normalized = normalize_path(&entry.name()?);
         if wanted.contains(&normalized) && !entry.is_dir() {
-            matching.push((i, entry.name().to_string()));
+            matching.push((i, entry.name()?.to_string()));
         }
     }
 
@@ -550,7 +550,7 @@ fn list_zip(archive_path: &Path) -> Result<Vec<ArchiveEntry>> {
         let entry = archive.by_index_raw(i)?;
         if !entry.is_dir() {
             entries.push(ArchiveEntry {
-                path: entry.name().to_string(),
+                path: entry.name()?.to_string(),
                 size: entry.size(),
                 is_dir: false,
             });
@@ -569,7 +569,7 @@ fn extract_zip_file(archive_path: &Path, file_path: &str) -> Result<Vec<u8>> {
     for i in 0..archive.len() {
         let normalized = {
             let entry = archive.by_index_raw(i)?;
-            normalize_path(entry.name())
+            normalize_path(&entry.name()?)
         };
 
         if normalized == target {
@@ -601,7 +601,7 @@ fn extract_zip_files(archive_path: &Path, files: &[&str], output_dir: &Path) -> 
     for i in 0..archive.len() {
         let normalized = {
             let entry = archive.by_index_raw(i)?;
-            normalize_path(entry.name())
+            normalize_path(&entry.name()?)
         };
 
         if target_set.contains(&normalized) {

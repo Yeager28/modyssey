@@ -28,3 +28,8 @@ CLAUDE.md
 # Generated Python bytecode
 __pycache__/
 *.py[cod]
+
+
+# M1 local verification scratch (audit JSON, build logs, MSVC wrapper)
+/m1-logs
+/M1-REPORT.md

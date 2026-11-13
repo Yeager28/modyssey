@@ -189,7 +189,7 @@ impl CollectionPackage {
                     }) {
                         bail!("Package contains a link or special file");
                     }
-                    add(entry.name().into(), entry.size(), entry.is_dir())?;
+                    add(entry.name()?.into(), entry.size(), entry.is_dir())?;
                 }
             }
             Container::SevenZip => {

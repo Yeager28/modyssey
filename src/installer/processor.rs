@@ -244,7 +244,7 @@ fn list_zip_files(archive_path: &Path) -> Result<Vec<ArchiveFileEntry>> {
         let entry = archive.by_index_raw(i)?;
         if !entry.is_dir() {
             files.push(ArchiveFileEntry {
-                file_path: entry.name().to_string(),
+                file_path: entry.name()?.to_string(),
                 file_size: entry.size(),
             });
         }
@@ -1848,7 +1848,7 @@ fn read_single_file_from_archive(
 
             for i in 0..archive.len() {
                 if let Ok(mut entry) = archive.by_index(i) {
-                    let entry_name = entry.name().to_string();
+                    let entry_name = entry.name()?.to_string();
                     let normalized = paths::normalize_for_lookup(&entry_name);
                     if normalized == normalized_target {
                         let mut data = Vec::with_capacity(entry.size() as usize);

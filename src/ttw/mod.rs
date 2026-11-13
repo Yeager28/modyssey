@@ -622,7 +622,7 @@ fn download_ttw_installer() -> Result<PathBuf> {
     let mut found_binary = false;
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let name = file.name().to_string();
+        let name = file.name()?.to_string();
 
         // Extract mpi_installer binary (CLI version, not GUI)
         if name == "mpi_installer" || name.ends_with("/mpi_installer") {
