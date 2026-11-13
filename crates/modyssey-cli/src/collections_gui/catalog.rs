@@ -1,6 +1,6 @@
+use crate::collection::progress::safe_message;
+use crate::collection_app::catalog::{Catalog, Entry, Game, Page, Search, Sort, PAGE_SIZE};
 use eframe::egui;
-use modyssey::collection::progress::safe_message;
-use modyssey::collection_app::catalog::{Catalog, Entry, Game, Page, Search, Sort, PAGE_SIZE};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,
@@ -326,10 +326,10 @@ impl CatalogView {
                                     ui.horizontal_wrapped(|ui| {
                                         ui.hyperlink_to("View on Nexus", &url);
                                         if entry.can_review_installation() {
-                                            if modyssey::collection::games::profile(&entry.game.domain_name).is_some_and(|g| g.experimental) { ui.small("Experimental support"); }
+                                            if crate::collection::games::profile(&entry.game.domain_name).is_some_and(|g| g.experimental) { ui.small("Experimental support"); }
                                             if ui.add_enabled(!installing, egui::Button::new("Review installation")).on_disabled_hover_text("Wait for the current collection job to finish or stop it from Install.").clicked() { selected = Some(url.clone()); }
                                         } else {
-                                            ui.small(installation_label(entry)).on_hover_text(modyssey::collection::games::unsupported_reason(&entry.game.domain_name));
+                                            ui.small(installation_label(entry)).on_hover_text(crate::collection::games::unsupported_reason(&entry.game.domain_name));
                                         }
                                     });
                                 });
@@ -348,7 +348,7 @@ impl CatalogView {
 }
 
 fn installation_label(entry: &Entry) -> &'static str {
-    if modyssey::collection::games::profile(&entry.game.domain_name).is_none() {
+    if crate::collection::games::profile(&entry.game.domain_name).is_none() {
         "Browsing only · Installation for this game is not supported yet"
     } else {
         "Browsing only · This revision is not supported for installation"

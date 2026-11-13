@@ -7,12 +7,13 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-mod google_drive;
-mod http;
+pub mod google_drive;
+pub mod hash_compat;
+pub mod http;
 pub mod loverslab;
-mod mediafire;
+pub mod mediafire;
 pub mod mega_native;
-mod nexus;
+pub mod nexus;
 pub mod nexus_files;
 pub mod wabbajack_cdn;
 pub mod yandex;

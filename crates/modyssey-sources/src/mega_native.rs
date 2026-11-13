@@ -247,7 +247,7 @@ mod tests {
             .unwrap();
         let elapsed = started.elapsed().as_secs_f64();
         let size = std::fs::metadata(&output).unwrap().len();
-        let hash = crate::hash::compute_file_hash(&output).unwrap();
+        let hash = crate::hash_compat::compute_file_hash(&output).unwrap();
         assert_eq!(hash, expected);
         println!("Verified Mega file: {size} bytes in {elapsed:.2}s ({:.2} MiB/s), Wabbajack hash {hash}", size as f64 / elapsed / 1048576.0);
     }

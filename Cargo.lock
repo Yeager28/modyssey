@@ -3775,10 +3775,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "modyssey"
+name = "modyssey-app"
+version = "0.2.9"
+
+[[package]]
+name = "modyssey-cli"
 version = "0.2.9"
 dependencies = [
- "aes 0.8.4",
  "anyhow",
  "async-trait",
  "ba2",
@@ -3789,7 +3792,6 @@ dependencies = [
  "clap",
  "console",
  "crc32fast",
- "ctr",
  "directxtex",
  "dirs",
  "eframe",
@@ -3805,9 +3807,11 @@ dependencies = [
  "libloot",
  "libmimalloc-sys",
  "md5",
- "mega",
  "memmap2",
  "mimalloc",
+ "modyssey-core",
+ "modyssey-games",
+ "modyssey-sources",
  "once_cell",
  "pollster",
  "qbsdiff",
@@ -3827,7 +3831,6 @@ dependencies = [
  "serde_urlencoded",
  "sevenz-rust2",
  "sha2 0.10.9",
- "sluice",
  "steam-vent",
  "sysinfo",
  "tar",
@@ -3846,6 +3849,119 @@ dependencies = [
  "which",
  "xxhash-rust",
  "zbus-secret-service-keyring-store",
+ "zip",
+]
+
+[[package]]
+name = "modyssey-compiler"
+version = "0.2.9"
+
+[[package]]
+name = "modyssey-core"
+version = "0.2.9"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "ba2",
+ "base64 0.22.1",
+ "binrw",
+ "block_compression",
+ "chrono",
+ "clap",
+ "console",
+ "directxtex",
+ "dirs",
+ "encoding_rs 0.8.44",
+ "flate2",
+ "futures",
+ "image",
+ "image_dds",
+ "indicatif",
+ "keyring-core",
+ "libc",
+ "libmimalloc-sys",
+ "md5",
+ "memmap2",
+ "mimalloc",
+ "modyssey-games",
+ "modyssey-sources",
+ "once_cell",
+ "pollster",
+ "qbsdiff",
+ "rayon",
+ "reflink-copy",
+ "regex",
+ "reqwest 0.13.5",
+ "rusqlite",
+ "semver",
+ "serde",
+ "serde_json",
+ "sevenz-rust2",
+ "sha2 0.10.9",
+ "sysinfo",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "unicode-normalization",
+ "unrar",
+ "uuid",
+ "walkdir",
+ "wgpu 28.0.0",
+ "which",
+ "xxhash-rust",
+ "zbus-secret-service-keyring-store",
+ "zip",
+]
+
+[[package]]
+name = "modyssey-games"
+version = "0.2.9"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "modyssey-sources"
+version = "0.2.9"
+dependencies = [
+ "aes 0.8.4",
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "ctr",
+ "dirs",
+ "flate2",
+ "futures",
+ "indicatif",
+ "md5",
+ "mega",
+ "once_cell",
+ "rayon",
+ "regex",
+ "reqwest 0.12.28",
+ "reqwest 0.13.5",
+ "rusqlite",
+ "scraper",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "sha2 0.10.9",
+ "sluice",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "unicode-normalization",
+ "uuid",
+ "xxhash-rust",
  "zip",
 ]
 

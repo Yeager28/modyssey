@@ -1,0 +1,71 @@
+[package]
+name = "modyssey-core"
+description = "Modyssey engine: manifest model, verification, install pipeline, patching, BSA/textures, archive extraction"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "modyssey_core"
+path = "src/lib.rs"
+
+[dependencies]
+modyssey-sources = { workspace = true }
+modyssey-games = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+encoding_rs = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+zip = { workspace = true }
+sevenz-rust2 = { workspace = true }
+unrar = { workspace = true }
+flate2 = { workspace = true }
+tar = { workspace = true }
+ba2 = { workspace = true }
+rayon = { workspace = true }
+sysinfo = { workspace = true }
+image_dds = { workspace = true }
+image = { workspace = true }
+directxtex = { workspace = true }
+wgpu = { workspace = true }
+block_compression = { workspace = true }
+pollster = { workspace = true }
+reqwest = { workspace = true }
+futures = { workspace = true }
+chrono = { workspace = true }
+semver = { workspace = true }
+regex = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+binrw = { workspace = true }
+clap = { workspace = true }
+indicatif = { workspace = true }
+walkdir = { workspace = true }
+tempfile = { workspace = true }
+memmap2 = { workspace = true }
+reflink-copy = { workspace = true }
+which = { workspace = true }
+md5 = { workspace = true }
+sha2 = { workspace = true }
+qbsdiff = { workspace = true }
+xxhash-rust = { workspace = true }
+base64 = { workspace = true }
+dirs = { workspace = true }
+libc = { workspace = true }
+mimalloc = { workspace = true }
+libmimalloc-sys = { workspace = true }
+once_cell = { workspace = true }
+unicode-normalization = { workspace = true }
+console = { workspace = true }
+keyring-core = { workspace = true }
+zbus-secret-service-keyring-store = { workspace = true }

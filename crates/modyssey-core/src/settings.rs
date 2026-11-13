@@ -178,7 +178,7 @@ impl std::fmt::Debug for Settings {
 
 impl Settings {
     /// Get the config directory path (~/.config/modyssey)
-    pub(crate) fn config_dir() -> Result<PathBuf> {
+    pub fn config_dir() -> Result<PathBuf> {
         let config_dir = dirs::config_dir()
             .context("Could not determine config directory")?
             .join("modyssey");

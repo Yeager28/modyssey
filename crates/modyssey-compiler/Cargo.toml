@@ -1,0 +1,12 @@
+[package]
+name = "modyssey-compiler"
+description = "Modyssey modlist compiler: MO2 instance → .modfile (milestone M5)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "modyssey_compiler"
+path = "src/lib.rs"

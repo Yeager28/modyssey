@@ -9,34 +9,16 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-mod archive;
-mod browser_gui;
-mod bsa;
-mod collections_gui;
-mod downloaders;
-mod fluorine;
-mod game_finder;
-mod game_index;
-mod hash;
-mod installer;
-mod modlist;
-mod momw_gui;
-mod octodiff;
-mod paths;
-mod secrets;
-mod settings;
-mod steam;
-mod textures;
-
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use installer::{
+use modyssey::installer::{
     CliReporter, ExtractStrategy, InstallConfig, Installer, JsonEventWriter, JsonReporter,
     ProgressCallback, ProgressMode, ProgressReporter, StdioHost,
 };
+use modyssey::{browser_gui, downloaders, game_finder, modlist, settings, textures};
 
 /// CLI-facing enum for the `--extract` flag. Maps to the internal
-/// `installer::ExtractStrategy` used by the install pipeline.
+/// `modyssey::installer::ExtractStrategy` used by the install pipeline.
 #[derive(Copy, Clone, Debug, ValueEnum)]
 enum ExtractStrategyArg {
     /// Extract archives as they finish downloading. Network + CPU overlap.
@@ -948,11 +930,13 @@ async fn main() -> Result<()> {
                 wabbajack_url: original_wabbajack_url,
                 hosted_download_provider: hosted_bridge
                     .clone()
-                    .map(|host| host as Arc<dyn installer::HostedDownloadProvider>),
+                    .map(|host| host as Arc<dyn modyssey::installer::HostedDownloadProvider>),
                 cancellation_token: hosted_bridge
                     .as_ref()
                     .map(|host| {
-                        installer::HostedDownloadProvider::cancellation_token(host.as_ref())
+                        modyssey::installer::HostedDownloadProvider::cancellation_token(
+                            host.as_ref(),
+                        )
                     })
                     .unwrap_or_default(),
             };
@@ -1222,7 +1206,7 @@ async fn run_fluorine_action(action: FluorineAction) -> Result<()> {
                 Some(settings.fluorine_path.as_str())
             };
 
-            match fluorine::detect(override_path) {
+            match modyssey::fluorine::detect(override_path) {
                 Some(install) => println!(
                     "Detected:               {} (via {})",
                     install.binary.display(),
@@ -1237,7 +1221,7 @@ async fn run_fluorine_action(action: FluorineAction) -> Result<()> {
 
         FluorineAction::Install { dest } => {
             println!("Downloading latest Fluorine release...");
-            let path = fluorine::download_latest(dest).await?;
+            let path = modyssey::fluorine::download_latest(dest).await?;
             println!("Installed Fluorine to: {}", path.display());
         }
 
@@ -1258,7 +1242,7 @@ async fn run_fluorine_action(action: FluorineAction) -> Result<()> {
                     install_dir.display()
                 );
             }
-            fluorine::register_portable_instance(&install_dir, make_current)?;
+            modyssey::fluorine::register_portable_instance(&install_dir, make_current)?;
             println!(
                 "Registered {} as a Fluorine portable instance{}",
                 install_dir.display(),
@@ -1290,7 +1274,7 @@ async fn run_fluorine_action(action: FluorineAction) -> Result<()> {
 /// resolved install. This explicit utility does NOT
 /// touch Fluorine's QSettings file — useful as a "primer" called by external
 /// launchers that just want the binary path.
-async fn ensure_fluorine_available() -> Result<fluorine::FluorineInstall> {
+async fn ensure_fluorine_available() -> Result<modyssey::fluorine::FluorineInstall> {
     let settings = settings::Settings::load();
     let override_path = if settings.fluorine_path.is_empty() {
         None
@@ -1298,12 +1282,12 @@ async fn ensure_fluorine_available() -> Result<fluorine::FluorineInstall> {
         Some(settings.fluorine_path.as_str())
     };
 
-    if let Some(install) = fluorine::detect(override_path) {
+    if let Some(install) = modyssey::fluorine::detect(override_path) {
         return Ok(install);
     }
     tracing::info!("Fluorine not detected — downloading the latest release");
-    fluorine::download_latest(None).await?;
-    fluorine::detect(override_path)
+    modyssey::fluorine::download_latest(None).await?;
+    modyssey::fluorine::detect(override_path)
         .ok_or_else(|| anyhow::anyhow!("Downloaded Fluorine but could not detect the binary"))
 }
 
@@ -1608,7 +1592,7 @@ async fn run_modlist_update(
         reporter: cli_reporter.clone() as Arc<dyn ProgressReporter>,
         loverslab_email: settings.loverslab_email.clone(),
         loverslab_password: settings.loverslab_password.clone(),
-        extract_strategy: installer::ExtractStrategy::Streaming,
+        extract_strategy: modyssey::installer::ExtractStrategy::Streaming,
         machine_name: Some(machine_name.clone()),
         wabbajack_url: Some(download_url),
         hosted_download_provider: None,
@@ -1683,7 +1667,7 @@ async fn run_modlist_update(
 ///
 /// Returns `(install_path, store_label)` for display.
 fn auto_detect_game_dir(wabbajack_path: &std::path::Path) -> Option<(PathBuf, &'static str)> {
-    use installer::game_preflight::check_game_files_from_modlist;
+    use modyssey::installer::game_preflight::check_game_files_from_modlist;
 
     let modlist = modlist::parse_wabbajack_file(wabbajack_path).ok()?;
 

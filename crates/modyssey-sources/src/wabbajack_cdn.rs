@@ -379,7 +379,7 @@ impl WabbajackCdnDownloader {
     }
 }
 
-pub(crate) fn validate_definition(definition: &CdnFileDefinition) -> Result<()> {
+pub fn validate_definition(definition: &CdnFileDefinition) -> Result<()> {
     use base64::Engine;
     let valid_hash = |hash: &str| {
         base64::engine::general_purpose::STANDARD
@@ -424,7 +424,7 @@ fn verify_artifact(path: &Path, definition: &CdnFileDefinition, is_wabbajack: bo
             .by_name("modlist")
             .context("Wabbajack archive has no modlist entry")?;
     }
-    if !crate::hash::verify_file_hash(path, &definition.hash)? {
+    if !crate::hash_compat::verify_file_hash(path, &definition.hash)? {
         bail!("Cached/downloaded file checksum mismatch");
     }
     Ok(())

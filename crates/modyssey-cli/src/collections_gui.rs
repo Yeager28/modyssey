@@ -1,11 +1,11 @@
 //! Standalone Collections view. Long-running I/O stays in application services.
-use eframe::egui;
-use modyssey::collection::{
+use crate::collection::{
     progress::{safe_message, WorkerEvent},
     publish::PublicationReport,
     worker::read_json,
 };
-use modyssey::collection_app::{self as app, Event, Inputs, MissingArtifact, Prepared};
+use crate::collection_app::{self as app, Event, Inputs, MissingArtifact, Prepared};
+use eframe::egui;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -257,12 +257,11 @@ impl CollectionsView {
     }
 
     fn load(&mut self, ctx: &egui::Context, key: &str) {
-        if let Ok(locator) =
-            modyssey::collection::url::parse_collection_url(self.inputs.source.trim())
+        if let Ok(locator) = crate::collection::url::parse_collection_url(self.inputs.source.trim())
         {
             // A VR edition shares its base game's Nexus domain, so keep a game
             // the user chose when it is filed under this collection's domain.
-            let chosen_matches = modyssey::collection::games::profile(&self.selected_game)
+            let chosen_matches = crate::collection::games::profile(&self.selected_game)
                 .is_some_and(|g| g.nexus_domain() == locator.domain);
             if !chosen_matches {
                 self.select_game(&locator.domain);
@@ -335,7 +334,7 @@ impl CollectionsView {
                 ui.heading("Install collection");
                 ui.label("Install a pinned Nexus collection into its own folder.");
                 ui.horizontal(|ui| {
-                    let game = modyssey::collection::games::profile(&self.selected_game);
+                    let game = crate::collection::games::profile(&self.selected_game);
                     ui.small(game.map_or("Unsupported game", |g| g.name));
                     ui.separator();
                     ui.small(if key.is_empty() { "Nexus account not configured" } else { "Saved Nexus key available" });
@@ -344,8 +343,8 @@ impl CollectionsView {
                 ui.add_space(10.0);
                 ui.add_enabled_ui(!self.busy, |ui| {
                     let mut selected_game = self.selected_game.clone();
-                    egui::ComboBox::from_id_salt("collection_install_game").selected_text(modyssey::collection::games::profile(&selected_game).map_or("Choose game", |g| g.name)).show_ui(ui, |ui| {
-                        for profile in modyssey::collection::games::PROFILES {
+                    egui::ComboBox::from_id_salt("collection_install_game").selected_text(crate::collection::games::profile(&selected_game).map_or("Choose game", |g| g.name)).show_ui(ui, |ui| {
+                        for profile in crate::collection::games::PROFILES {
                             ui.selectable_value(&mut selected_game, profile.domain.into(), format!("{}{}", profile.name, if profile.experimental { " (experimental)" } else { "" }));
                         }
                     });

@@ -215,7 +215,7 @@ impl BrowserApp {
         let settings = Settings::load();
         let downloads_dir = settings.default_downloads_dir.clone();
         let install_dir = settings.default_install_dir.clone();
-        let collection_games = modyssey::collection::games::PROFILES
+        let collection_games = crate::collection::games::PROFILES
             .iter()
             .filter_map(|profile| {
                 detected

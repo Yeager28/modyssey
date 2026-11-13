@@ -948,11 +948,21 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn live_nibbles_comment_attachment() {
-        let settings = crate::settings::Settings::load();
-        let downloader =
-            LoversLabDownloader::login(&settings.loverslab_email, &settings.loverslab_password)
-                .await
-                .unwrap();
+        // Settings live in modyssey-core now; read the same settings.json
+        // directly (this is an #[ignore]d live test — no core dep needed).
+        let settings: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(
+                dirs::config_dir()
+                    .expect("config dir")
+                    .join("modyssey")
+                    .join("settings.json"),
+            )
+            .expect("settings.json"),
+        )
+        .expect("valid JSON");
+        let email = settings["loverslab_email"].as_str().expect("email");
+        let password = settings["loverslab_password"].as_str().expect("password");
+        let downloader = LoversLabDownloader::login(email, password).await.unwrap();
         let dir = tempfile::tempdir().unwrap();
         let output = dir.path().join("NIbblesAnim581.7z");
         downloader
@@ -964,7 +974,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(std::fs::metadata(&output).unwrap().len(), 39_018_842);
-        assert!(crate::hash::verify_file_hash(&output, "mYU0NJHtOLU=").unwrap());
+        assert!(crate::hash_compat::verify_file_hash(&output, "mYU0NJHtOLU=").unwrap());
     }
 
     #[test]
@@ -1287,7 +1297,8 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{name}: {e:#}"));
             assert_eq!(std::fs::metadata(&output).unwrap().len(), size, "{name}");
             assert!(
-                crate::hash::verify_file_hash(&output, archive["Hash"].as_str().unwrap()).unwrap(),
+                crate::hash_compat::verify_file_hash(&output, archive["Hash"].as_str().unwrap())
+                    .unwrap(),
                 "{name}"
             );
             println!("Verified {name}: {size} bytes, modlist hash matches");
@@ -1456,7 +1467,7 @@ mod tests {
         // Verify hash matches what the modlist expects
         let expected_hash = "qcloPquVeKc=";
         let (matches, actual) =
-            crate::hash::verify_file_hash_detailed(&output, expected_hash).unwrap();
+            crate::hash_compat::verify_file_hash_detailed(&output, expected_hash).unwrap();
         println!(
             "ES DDI Patch.7z: {} bytes, hash={} expected={} match={}",
             meta.len(),
@@ -1504,7 +1515,7 @@ mod tests {
         // Verify hash matches what the modlist expects
         let expected_hash = "UeMYfB43FU8=";
         let (matches, actual) =
-            crate::hash::verify_file_hash_detailed(&output, expected_hash).unwrap();
+            crate::hash_compat::verify_file_hash_detailed(&output, expected_hash).unwrap();
         println!(
             "CO Hostile Creatures: {} bytes, hash={} expected={} match={}",
             meta.len(),

@@ -1,0 +1,16 @@
+[package]
+name = "modyssey-games"
+description = "Modyssey game detection: data-driven game registry, Steam/Heroic/Proton finders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "modyssey_games"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

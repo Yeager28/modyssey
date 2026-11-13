@@ -1,0 +1,87 @@
+[package]
+name = "modyssey-cli"
+description = "Modyssey command-line interface (binary: modyssey)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "modyssey"
+path = "src/lib.rs"
+
+[[bin]]
+name = "modyssey"
+path = "src/main.rs"
+
+[dependencies]
+modyssey-core = { workspace = true }
+modyssey-sources = { workspace = true }
+modyssey-games = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tokio-util = { workspace = true }
+anyhow = { workspace = true }
+zip = { workspace = true }
+flate2 = { workspace = true }
+rayon = { workspace = true }
+reqwest = { workspace = true }
+reqwest_012 = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+scraper = { workspace = true }
+serde_urlencoded = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+clap = { workspace = true }
+indicatif = { workspace = true }
+walkdir = { workspace = true }
+tempfile = { workspace = true }
+memmap2 = { workspace = true }
+which = { workspace = true }
+base64 = { workspace = true }
+xxhash-rust = { workspace = true }
+sha2 = { workspace = true }
+md5 = { workspace = true }
+dirs = { workspace = true }
+libc = { workspace = true }
+once_cell = { workspace = true }
+unicode-normalization = { workspace = true }
+mimalloc = { workspace = true }
+libmimalloc-sys = { workspace = true }
+console = { workspace = true }
+eframe = { workspace = true }
+egui_extras = { workspace = true }
+rfd = { workspace = true }
+roxmltree = { workspace = true }
+libloot = { workspace = true }
+steam-vent = { workspace = true }
+rpassword = { workspace = true }
+semver = { workspace = true }
+image = { workspace = true }
+image_dds = { workspace = true }
+directxtex = { workspace = true }
+wgpu = { workspace = true }
+block_compression = { workspace = true }
+pollster = { workspace = true }
+ba2 = { workspace = true }
+sevenz-rust2 = { workspace = true }
+unrar = { workspace = true }
+tar = { workspace = true }
+encoding_rs = { workspace = true }
+binrw = { workspace = true }
+crc32fast = { workspace = true }
+qbsdiff = { workspace = true }
+reflink-copy = { workspace = true }
+sysinfo = { workspace = true }
+keyring-core = { workspace = true }
+zbus-secret-service-keyring-store = { workspace = true }

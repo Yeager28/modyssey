@@ -123,15 +123,15 @@ impl GameIndex {
     /// The index compiled into this binary. A corrupt embedded file degrades to
     /// an empty index rather than breaking preflight.
     pub fn embedded() -> &'static GameIndex {
-        EMBEDDED.get_or_init(
-            || match Self::parse(include_str!("../../data/game_index.json")) {
+        EMBEDDED.get_or_init(|| {
+            match Self::parse(include_str!("../../../../data/game_index.json")) {
                 Ok(index) => index,
                 Err(err) => {
                     tracing::warn!("Embedded game index is unreadable, ignoring it: {err:#}");
                     Self::empty()
                 }
-            },
-        )
+            }
+        })
     }
 
     pub fn parse(json: &str) -> Result<Self> {
@@ -491,6 +491,6 @@ mod tests {
     #[test]
     fn embedded_index_parses() {
         // Guards against committing a malformed data/game_index.json.
-        GameIndex::parse(include_str!("../../data/game_index.json")).unwrap();
+        GameIndex::parse(include_str!("../../../../data/game_index.json")).unwrap();
     }
 }

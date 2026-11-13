@@ -1,0 +1,47 @@
+[package]
+name = "modyssey-sources"
+description = "Modyssey downloaders: Nexus, Wabbajack CDN, HTTP, Mega, Google Drive, MediaFire, LoversLab, Yandex"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "modyssey_sources"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+zip = { workspace = true }
+flate2 = { workspace = true }
+rayon = { workspace = true }
+reqwest = { workspace = true }
+futures = { workspace = true }
+mega = { workspace = true }
+aes = { workspace = true }
+ctr = { workspace = true }
+reqwest_012 = { workspace = true }
+async-trait = { workspace = true }
+sluice = { workspace = true }
+chrono = { workspace = true }
+indicatif = { workspace = true }
+regex = { workspace = true }
+scraper = { workspace = true }
+serde_urlencoded = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+base64 = { workspace = true }
+xxhash-rust = { workspace = true }
+sha2 = { workspace = true }
+md5 = { workspace = true }
+tempfile = { workspace = true }
+dirs = { workspace = true }
+once_cell = { workspace = true }
+unicode-normalization = { workspace = true }
