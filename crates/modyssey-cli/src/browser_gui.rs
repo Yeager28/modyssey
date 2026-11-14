@@ -204,7 +204,7 @@ impl BrowserApp {
                 Launcher::Heroic { .. } => find_by_gog_id(&game.app_id),
             };
             if let Some(k) = known {
-                if let Some(wj) = k.wabbajack_type {
+                if let Some(wj) = k.wabbajack_type.as_deref() {
                     installed_game_types.insert(wj.to_lowercase());
                 }
             }

@@ -182,11 +182,11 @@ fn parse_appmanifest(
             is_flatpak: steam_info.is_flatpak,
             is_snap: steam_info.is_snap,
         },
-        my_games_folder: known_game.and_then(|g| g.my_games_folder.map(String::from)),
-        appdata_local_folder: known_game.and_then(|g| g.appdata_local_folder.map(String::from)),
-        appdata_roaming_folder: known_game.and_then(|g| g.appdata_roaming_folder.map(String::from)),
-        registry_path: known_game.map(|g| g.registry_path.to_string()),
-        registry_value: known_game.map(|g| g.registry_value.to_string()),
+        my_games_folder: known_game.and_then(|g| g.my_games_folder.clone()),
+        appdata_local_folder: known_game.and_then(|g| g.appdata_local_folder.clone()),
+        appdata_roaming_folder: known_game.and_then(|g| g.appdata_roaming_folder.clone()),
+        registry_path: known_game.map(|g| g.registry_path.clone()),
+        registry_value: known_game.map(|g| g.registry_value.clone()),
     })
 }
 

@@ -248,6 +248,14 @@ enum Commands {
         #[command(subcommand)]
         action: FluorineAction,
     },
+
+    /// List the games Modyssey knows about (data-driven registry) and
+    /// whether an installation is detected for each.
+    Games {
+        /// Emit the registry as JSON instead of a human-readable table.
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -567,7 +575,7 @@ async fn main() -> Result<()> {
                         Launcher::Steam { .. } => find_by_steam_id(&game.app_id),
                         Launcher::Heroic { .. } => find_by_gog_id(&game.app_id),
                     };
-                    if let Some(game_type) = known.and_then(|game| game.wabbajack_type) {
+                    if let Some(game_type) = known.and_then(|game| game.wabbajack_type.as_deref()) {
                         installed_games.insert(game_type.to_ascii_lowercase());
                     }
                 }
@@ -1161,6 +1169,42 @@ async fn main() -> Result<()> {
         Commands::Fluorine { action } => {
             run_fluorine_action(action).await?;
         }
+
+        Commands::Games { json } => {
+            let registry = game_finder::games();
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(
+                        &registry
+                            .iter()
+                            .map(|g| serde_json::json!({
+                                "name": g.name,
+                                "steam_app_id": g.steam_app_id,
+                                "gog_app_id": g.gog_app_id,
+                                "wabbajack_type": g.wabbajack_type,
+                                "steam_folder": g.steam_folder,
+                                "registry_path": g.registry_path,
+                            }))
+                            .collect::<Vec<_>>()
+                    )?
+                );
+            } else {
+                println!(
+                    "Game registry ({} entries, schema {})",
+                    registry.len(),
+                    game_finder::GAMES_SCHEMA_VERSION
+                );
+                if let Some(overlay) = game_finder::overlay_path() {
+                    if overlay.exists() {
+                        println!("  overlay: {}", overlay.display());
+                    }
+                }
+                for g in registry {
+                    println!("  {:<38} steam {}", g.name, g.steam_app_id);
+                }
+            }
+        }
     }
 
     Ok(())
@@ -1686,12 +1730,12 @@ fn auto_detect_game_dir(wabbajack_path: &std::path::Path) -> Option<(PathBuf, &'
     // Build an ordered candidate list: every Steam variant first (canonical
     // app ID before GOTY/store reissues), then every Heroic/GOG variant.
     let mut candidates: Vec<(PathBuf, &'static str)> = Vec::new();
-    let mut tried_steam_ids: Vec<&'static str> = Vec::new();
-    let mut tried_gog_ids: Vec<&'static str> = Vec::new();
+    let mut tried_steam_ids: Vec<&str> = Vec::new();
+    let mut tried_gog_ids: Vec<&str> = Vec::new();
 
     for g in &variants {
-        tried_steam_ids.push(g.steam_app_id);
-        if let Some(p) = game_finder::find_game_install_path(g.steam_app_id) {
+        tried_steam_ids.push(g.steam_app_id.as_str());
+        if let Some(p) = game_finder::find_game_install_path(&g.steam_app_id) {
             // Distinguish the canonical Steam entry from a store variant in
             // the log so the user can tell which appmanifest matched.
             let label: &'static str = if g.wabbajack_type.is_some() {
@@ -1705,7 +1749,7 @@ fn auto_detect_game_dir(wabbajack_path: &std::path::Path) -> Option<(PathBuf, &'
 
     let heroic_games = game_finder::detect_heroic_games();
     for g in &variants {
-        if let Some(gog_app_id) = g.gog_app_id {
+        if let Some(gog_app_id) = g.gog_app_id.as_deref() {
             tried_gog_ids.push(gog_app_id);
             for hg in &heroic_games {
                 if hg.app_id == gog_app_id {

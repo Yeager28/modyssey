@@ -1,286 +1,183 @@
-//! Known games configuration
+//! Known games registry
 //!
-//! Contains metadata for games that Modyssey supports, including:
+//! The game registry is data-driven: the shipped defaults live in
+//! `data/games.json` (embedded via `include_str!`) and users can extend or
+//! override them with an overlay file at
+//! `%LOCALAPPDATA%/modyssey/games-overlay.json` (Windows;
+//          `~/.local/share/modyssey/` on Linux — `dirs::data_local_dir()`).
+//! Load order: embedded defaults first, then overlay entries applied
+//! additively — an overlay entry replaces the default entry with the same
+//! `steam_app_id` or the same `name` (case-insensitive); anything else is
+//! appended.
+//!
+//! Per-game metadata:
 //! - Steam App ID
+//! - GOG App ID (if available)
 //! - My Games folder name (Documents/My Games/*)
-//! - AppData/Local folder name
-//! - Registry path for game detection
+//! - AppData/Local + AppData/Roaming folder names
+//! - Registry path/value for game detection
+//! - steamapps/common folder name
+//! - Wabbajack `GameType` string
+
+use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+use tracing::warn;
+
+/// Current registry schema version. A file with a different
+/// `schema_version` is rejected (the embedded copy panics — a programming
+/// error caught by tests; an overlay copy is ignored with a warning).
+pub const GAMES_SCHEMA_VERSION: u32 = 1;
 
 /// Configuration for a known game
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KnownGame {
     /// Display name
-    pub name: &'static str,
+    pub name: String,
     /// Steam App ID
-    pub steam_app_id: &'static str,
+    pub steam_app_id: String,
     /// GOG App ID (if available)
-    pub gog_app_id: Option<&'static str>,
+    pub gog_app_id: Option<String>,
     /// Folder name in Documents/My Games (if applicable)
-    pub my_games_folder: Option<&'static str>,
+    pub my_games_folder: Option<String>,
     /// Folder name in AppData/Local (if applicable)
-    pub appdata_local_folder: Option<&'static str>,
+    pub appdata_local_folder: Option<String>,
     /// Folder name in AppData/Roaming (if applicable)
-    pub appdata_roaming_folder: Option<&'static str>,
+    pub appdata_roaming_folder: Option<String>,
     /// Registry path under HKLM\Software\ (for game detection)
-    pub registry_path: &'static str,
+    pub registry_path: String,
     /// Registry value name for install path
-    pub registry_value: &'static str,
+    pub registry_value: String,
     /// Expected folder name in steamapps/common/
-    pub steam_folder: &'static str,
+    pub steam_folder: String,
     /// Wabbajack `GameType` string from modlist JSON (e.g. "FalloutNewVegas").
     /// None for store variants that don't have their own Wabbajack enum entry.
-    pub wabbajack_type: Option<&'static str>,
+    pub wabbajack_type: Option<String>,
 }
 
-/// All known games that Modyssey supports
-pub const KNOWN_GAMES: &[KnownGame] = &[
-    // Bethesda Games
-    KnownGame {
-        name: "Enderal",
-        steam_app_id: "933480",
-        gog_app_id: None,
-        my_games_folder: Some("Enderal"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\SureAI\Enderal",
-        registry_value: "Install_Path",
-        steam_folder: "Enderal",
-        wabbajack_type: Some("Enderal"),
-    },
-    KnownGame {
-        name: "Enderal Special Edition",
-        steam_app_id: "976620",
-        gog_app_id: None,
-        my_games_folder: Some("Enderal Special Edition"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\SureAI\Enderal SE",
-        registry_value: "installed path",
-        steam_folder: "Enderal Special Edition",
-        wabbajack_type: Some("EnderalSpecialEdition"),
-    },
-    KnownGame {
-        name: "Fallout 3",
-        steam_app_id: "22300",
-        gog_app_id: Some("1454315831"), // Fallout 3 GOTY
-        my_games_folder: Some("Fallout3"),
-        appdata_local_folder: Some("Fallout3"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Fallout3",
-        registry_value: "Installed Path",
-        steam_folder: "Fallout 3",
-        wabbajack_type: Some("Fallout3"),
-    },
-    KnownGame {
-        name: "Fallout 3 GOTY",
-        steam_app_id: "22370",
-        gog_app_id: None,
-        my_games_folder: Some("Fallout3"),
-        appdata_local_folder: Some("Fallout3"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Fallout3",
-        registry_value: "Installed Path",
-        steam_folder: "Fallout 3 goty",
-        wabbajack_type: None, // store variant — Wabbajack treats as Fallout3
-    },
-    KnownGame {
-        name: "Fallout 4",
-        steam_app_id: "377160",
-        gog_app_id: None,
-        my_games_folder: Some("Fallout4"),
-        appdata_local_folder: Some("Fallout4"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Fallout4",
-        registry_value: "Installed Path",
-        steam_folder: "Fallout 4",
-        wabbajack_type: Some("Fallout4"),
-    },
-    KnownGame {
-        name: "Fallout 4 VR",
-        steam_app_id: "611660",
-        gog_app_id: None,
-        my_games_folder: Some("Fallout4VR"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Fallout 4 VR",
-        registry_value: "Installed Path",
-        steam_folder: "Fallout 4 VR",
-        wabbajack_type: Some("Fallout4VR"),
-    },
-    KnownGame {
-        name: "Fallout New Vegas",
-        steam_app_id: "22380",
-        gog_app_id: Some("1454587428"), // Fallout NV Ultimate
-        my_games_folder: Some("FalloutNV"),
-        appdata_local_folder: Some("FalloutNV"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\FalloutNV",
-        registry_value: "Installed Path",
-        steam_folder: "Fallout New Vegas",
-        wabbajack_type: Some("FalloutNewVegas"),
-    },
-    KnownGame {
-        name: "Dark Souls II: Scholar of the First Sin",
-        steam_app_id: "335300",
-        gog_app_id: None, // DS2 SOTFS is Steam-only; no GOG release exists
-        my_games_folder: Some("NBGI\\DarkSoulsII"), // per-user settings
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Namco Bandai Games\Dark Souls II",
-        registry_value: "InstallPath",
-        steam_folder: "Dark Souls II Scholar of the First Sin",
-        wabbajack_type: Some("DarkSoulsII"),
-    },
-    KnownGame {
-        name: "Morrowind",
-        steam_app_id: "22320",
-        gog_app_id: Some("1440163901"), // Morrowind GOTY
-        my_games_folder: Some("Morrowind"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Morrowind",
-        registry_value: "Installed Path",
-        steam_folder: "Morrowind",
-        wabbajack_type: Some("Morrowind"),
-    },
-    KnownGame {
-        name: "Oblivion",
-        steam_app_id: "22330",
-        gog_app_id: Some("1458058109"), // Oblivion GOTY Deluxe
-        my_games_folder: Some("Oblivion"),
-        appdata_local_folder: Some("Oblivion"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Oblivion",
-        registry_value: "Installed Path",
-        steam_folder: "Oblivion",
-        wabbajack_type: Some("Oblivion"),
-    },
-    KnownGame {
-        name: "Skyrim",
-        steam_app_id: "72850",
-        gog_app_id: None, // Not on GOG
-        my_games_folder: Some("Skyrim"),
-        appdata_local_folder: Some("Skyrim"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Skyrim",
-        registry_value: "Installed Path",
-        steam_folder: "Skyrim",
-        wabbajack_type: Some("Skyrim"),
-    },
-    KnownGame {
-        name: "Skyrim Special Edition",
-        steam_app_id: "489830",
-        gog_app_id: Some("1711230643"), // Skyrim SE Anniversary Edition
-        my_games_folder: Some("Skyrim Special Edition"),
-        appdata_local_folder: Some("Skyrim Special Edition"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Skyrim Special Edition",
-        registry_value: "Installed Path",
-        steam_folder: "Skyrim Special Edition",
-        wabbajack_type: Some("SkyrimSpecialEdition"),
-    },
-    KnownGame {
-        name: "Skyrim VR",
-        steam_app_id: "611670",
-        gog_app_id: None,
-        my_games_folder: Some("Skyrim VR"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Skyrim VR",
-        registry_value: "Installed Path",
-        steam_folder: "Skyrim VR",
-        wabbajack_type: Some("SkyrimVR"),
-    },
-    KnownGame {
-        name: "Starfield",
-        steam_app_id: "1716740",
-        gog_app_id: None,
-        my_games_folder: Some("Starfield"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Bethesda Softworks\Starfield",
-        registry_value: "Installed Path",
-        steam_folder: "Starfield",
-        wabbajack_type: Some("Starfield"),
-    },
-    // CD Projekt RED Games
-    KnownGame {
-        name: "The Witcher 3",
-        steam_app_id: "292030",
-        gog_app_id: Some("1495134320"), // Witcher 3 GOTY
-        my_games_folder: Some("The Witcher 3"),
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\CD Projekt Red\The Witcher 3",
-        registry_value: "InstallFolder",
-        steam_folder: "The Witcher 3 Wild Hunt",
-        wabbajack_type: Some("Witcher3"),
-    },
-    KnownGame {
-        name: "Cyberpunk 2077",
-        steam_app_id: "1091500",
-        gog_app_id: Some("1423049311"),
-        my_games_folder: None,
-        appdata_local_folder: Some("CD Projekt Red/Cyberpunk 2077"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\CD Projekt Red\Cyberpunk 2077",
-        registry_value: "InstallFolder",
-        steam_folder: "Cyberpunk 2077",
-        wabbajack_type: Some("Cyberpunk2077"),
-    },
-    // Other popular moddable games
-    KnownGame {
-        name: "Baldur's Gate 3",
-        steam_app_id: "1086940",
-        gog_app_id: Some("1456460669"),
-        my_games_folder: None,
-        appdata_local_folder: Some("Larian Studios/Baldur's Gate 3"),
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Larian Studios\Baldur's Gate 3",
-        registry_value: "InstallDir",
-        steam_folder: "Baldurs Gate 3",
-        wabbajack_type: Some("BaldursGate3"),
-    },
-    // Square Enix Games
-    KnownGame {
-        name: "NieR: Automata",
-        steam_app_id: "524220",
-        gog_app_id: None,
-        my_games_folder: None,
-        appdata_local_folder: None,
-        appdata_roaming_folder: None,
-        registry_path: r"Software\Square Enix\NieR:Automata",
-        registry_value: "Install_Dir",
-        steam_folder: "NieRAutomata",
-        wabbajack_type: Some("NieRAutomata"),
-    },
-];
+/// Wrapper shared by the embedded registry and user overlays.
+#[derive(Debug, Deserialize)]
+struct GamesFile {
+    schema_version: u32,
+    #[serde(default)]
+    games: Vec<KnownGame>,
+}
+
+/// The merged game registry, built once on first use: embedded
+/// `data/games.json` + user overlay (if present).
+static REGISTRY: LazyLock<Vec<KnownGame>> = LazyLock::new(|| {
+    let base = parse_registry(include_str!("../../../data/games.json"))
+        .expect("embedded data/games.json must be valid (guarded by tests)");
+    match load_overlay() {
+        OverlayOutcome::None => base,
+        OverlayOutcome::Entries(entries) => merge_registry(base, &entries),
+    }
+});
+
+/// All known games that Modyssey supports (embedded defaults merged with the
+/// user overlay).
+pub fn games() -> &'static [KnownGame] {
+    &REGISTRY
+}
+
+/// Where the overlay file lives:
+/// `%LOCALAPPDATA%/modyssey/games-overlay.json` on Windows.
+pub fn overlay_path() -> Option<std::path::PathBuf> {
+    dirs::data_local_dir().map(|d| d.join("modyssey").join("games-overlay.json"))
+}
+
+enum OverlayOutcome {
+    /// No overlay file, or it is unusable (already warned).
+    None,
+    Entries(Vec<KnownGame>),
+}
+
+fn load_overlay() -> OverlayOutcome {
+    let Some(path) = overlay_path() else {
+        return OverlayOutcome::None;
+    };
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return OverlayOutcome::None; // optional by design
+    };
+    match serde_json::from_str::<GamesFile>(&text) {
+        Ok(file) if file.schema_version == GAMES_SCHEMA_VERSION => {
+            OverlayOutcome::Entries(file.games)
+        }
+        Ok(file) => {
+            warn!(
+                "Ignoring {} with schema_version {} (supported: {})",
+                path.display(),
+                file.schema_version,
+                GAMES_SCHEMA_VERSION
+            );
+            OverlayOutcome::None
+        }
+        Err(e) => {
+            warn!(
+                "Ignoring malformed game registry overlay {}: {}",
+                path.display(),
+                e
+            );
+            OverlayOutcome::None
+        }
+    }
+}
+
+/// Parse a registry file. Any schema version other than the current one is
+/// an error (the caller decides whether that is fatal).
+fn parse_registry(text: &str) -> Result<Vec<KnownGame>, String> {
+    let file: GamesFile =
+        serde_json::from_str(text).map_err(|e| format!("invalid games registry: {e}"))?;
+    if file.schema_version != GAMES_SCHEMA_VERSION {
+        return Err(format!(
+            "unsupported games schema_version {} (expected {})",
+            file.schema_version, GAMES_SCHEMA_VERSION
+        ));
+    }
+    Ok(file.games)
+}
+
+/// Apply overlay entries to the embedded defaults: an entry replaces the
+/// default with the same `steam_app_id` or the same `name`
+/// (case-insensitive); unmatched entries are appended in order.
+fn merge_registry(mut base: Vec<KnownGame>, overlay: &[KnownGame]) -> Vec<KnownGame> {
+    for entry in overlay {
+        let existing = base.iter().position(|g| {
+            g.steam_app_id == entry.steam_app_id
+                || g.name.to_lowercase() == entry.name.to_lowercase()
+        });
+        match existing {
+            Some(idx) => base[idx] = entry.clone(),
+            None => base.push(entry.clone()),
+        }
+    }
+    base
+}
 
 /// Find a known game by Steam App ID
 pub fn find_by_steam_id(app_id: &str) -> Option<&'static KnownGame> {
-    KNOWN_GAMES.iter().find(|g| g.steam_app_id == app_id)
+    games().iter().find(|g| g.steam_app_id == app_id)
 }
 
 /// Find a known game by GOG App ID
 pub fn find_by_gog_id(app_id: &str) -> Option<&'static KnownGame> {
-    KNOWN_GAMES.iter().find(|g| g.gog_app_id == Some(app_id))
+    games()
+        .iter()
+        .find(|g| g.gog_app_id.as_deref() == Some(app_id))
 }
 
 /// Find a known game by name (case-insensitive)
 pub fn find_by_name(name: &str) -> Option<&'static KnownGame> {
     let name_lower = name.to_lowercase();
-    KNOWN_GAMES
-        .iter()
-        .find(|g| g.name.to_lowercase() == name_lower)
+    games().iter().find(|g| g.name.to_lowercase() == name_lower)
 }
 
 /// Find a known game by its Wabbajack `GameType` string (e.g. "FalloutNewVegas",
 /// "SkyrimSpecialEdition"). Accepts common aliases Wabbajack has used across versions.
 pub fn find_by_wabbajack_type(wj_type: &str) -> Option<&'static KnownGame> {
     // Direct match against the canonical wabbajack_type field
-    if let Some(g) = KNOWN_GAMES
+    if let Some(g) = games()
         .iter()
-        .find(|g| g.wabbajack_type == Some(wj_type))
+        .find(|g| g.wabbajack_type.as_deref() == Some(wj_type))
     {
         return Some(g);
     }
@@ -293,9 +190,9 @@ pub fn find_by_wabbajack_type(wj_type: &str) -> Option<&'static KnownGame> {
         "TheWitcher3" => "Witcher3",
         _ => return None,
     };
-    KNOWN_GAMES
+    games()
         .iter()
-        .find(|g| g.wabbajack_type == Some(aliased))
+        .find(|g| g.wabbajack_type.as_deref() == Some(aliased))
 }
 
 /// Convenience: return `(steam_app_id, gog_app_id)` for a Wabbajack game_type.
@@ -305,9 +202,31 @@ pub fn find_by_wabbajack_type(wj_type: &str) -> Option<&'static KnownGame> {
 /// variants (Fallout 3 vs. Fallout 3 GOTY both shipped on Steam under
 /// different app IDs), use [`variants_for_wabbajack_type`] which returns
 /// every install candidate.
-pub fn ids_for_wabbajack_type(wj_type: &str) -> Option<(&'static str, Option<&'static str>)> {
+pub fn ids_for_wabbajack_type(wj_type: &str) -> Option<(String, Option<String>)> {
     let g = find_by_wabbajack_type(wj_type)?;
-    Some((g.steam_app_id, g.gog_app_id))
+    Some((g.steam_app_id.clone(), g.gog_app_id.clone()))
+}
+
+/// Return every known `KnownGame` entry that maps to the same Wabbajack
+/// `game_type`, ordered with the canonical entry first.
+///
+/// A store variant is recognised as `wabbajack_type: None` (i.e. Wabbajack
+/// doesn't have its own enum for it) plus a shared `registry_path` with the
+/// canonical entry — Bethesda variants use the same registry key regardless
+/// of the Steam app ID, so this catches Fallout 3 GOTY (22370) when the
+/// modlist asks for "Fallout3" (22300) and vice-versa.
+pub fn variants_for_wabbajack_type(wj_type: &str) -> Vec<&'static KnownGame> {
+    let Some(canonical) = find_by_wabbajack_type(wj_type) else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(2);
+    out.push(canonical);
+    for g in games() {
+        if g.wabbajack_type.is_none() && g.registry_path == canonical.registry_path {
+            out.push(g);
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -315,9 +234,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn embedded_registry_parses() {
+        let games = parse_registry(include_str!("../../../data/games.json"))
+            .expect("embedded registry must parse");
+        assert!(!games.is_empty());
+    }
+
+    #[test]
+    fn registry_has_18_shipped_games() {
+        assert_eq!(games().len(), 18, "shipped games.json entry count changed");
+    }
+
+    #[test]
+    fn dark_souls_ii_entry_is_exact() {
+        let g = find_by_steam_id("335300").expect("DS2 SOTFS entry");
+        assert_eq!(g.name, "Dark Souls II: Scholar of the First Sin");
+        assert_eq!(g.steam_app_id, "335300");
+        assert_eq!(g.gog_app_id, None);
+        assert_eq!(g.my_games_folder.as_deref(), Some("NBGI\\DarkSoulsII"));
+        assert_eq!(
+            g.registry_path,
+            r"Software\Namco Bandai Games\Dark Souls II"
+        );
+        assert_eq!(g.registry_value, "InstallPath");
+        assert_eq!(g.steam_folder, "Dark Souls II Scholar of the First Sin");
+        assert_eq!(g.wabbajack_type.as_deref(), Some("DarkSoulsII"));
+        assert_eq!(find_by_wabbajack_type("DarkSoulsII"), Some(g));
+    }
+
+    #[test]
     fn fallout3_resolves_to_both_steam_variants() {
         let v = variants_for_wabbajack_type("Fallout3");
-        let ids: Vec<&str> = v.iter().map(|g| g.steam_app_id).collect();
+        let ids: Vec<&str> = v.iter().map(|g| g.steam_app_id.as_str()).collect();
         assert!(
             ids.contains(&"22300") && ids.contains(&"22370"),
             "expected Fallout3 lookup to include both 22300 and 22370; got {:?}",
@@ -338,29 +286,42 @@ mod tests {
     fn unknown_type_returns_empty() {
         assert!(variants_for_wabbajack_type("NotAGame").is_empty());
     }
-}
 
-/// Return every known `KnownGame` entry that maps to the same Wabbajack
-/// `game_type`, ordered with the canonical entry first.
-///
-/// A store variant is recognised as `wabbajack_type: None` (i.e. Wabbajack
-/// doesn't have its own enum for it) plus a shared `registry_path` with the
-/// canonical entry — Bethesda variants use the same registry key regardless
-/// of the Steam app ID, so this catches Fallout 3 GOTY (22370) when the
-/// modlist asks for "Fallout3" (22300) and vice-versa.
-pub fn variants_for_wabbajack_type(wj_type: &str) -> Vec<&'static KnownGame> {
-    let Some(canonical) = find_by_wabbajack_type(wj_type) else {
-        return Vec::new();
-    };
-    let mut out = Vec::with_capacity(2);
-    out.push(canonical);
-    for g in KNOWN_GAMES {
-        if std::ptr::eq(g as *const _, canonical as *const _) {
-            continue;
-        }
-        if g.wabbajack_type.is_none() && g.registry_path == canonical.registry_path {
-            out.push(g);
-        }
+    #[test]
+    fn overlay_overrides_by_steam_id_and_name() {
+        let base = parse_registry(include_str!("../../../data/games.json")).unwrap();
+        let mut overridden = base[0].clone();
+        overridden.steam_folder = "Custom Folder".to_string();
+        let added = KnownGame {
+            name: "My Custom Game".to_string(),
+            steam_app_id: "999999".to_string(),
+            gog_app_id: None,
+            my_games_folder: None,
+            appdata_local_folder: None,
+            appdata_roaming_folder: None,
+            registry_path: r"Software\Custom\Game".to_string(),
+            registry_value: "InstallPath".to_string(),
+            steam_folder: "CustomGame".to_string(),
+            wabbajack_type: Some("MyCustomGame".to_string()),
+        };
+        let by_name = KnownGame {
+            name: base[1].name.clone(), // same name, different steam id
+            steam_app_id: "888888".to_string(),
+            ..added.clone()
+        };
+        let merged = merge_registry(base.clone(), &[overridden, added.clone(), by_name]);
+
+        assert_eq!(merged.len(), base.len() + 1, "one entry appended");
+        // Override by steam_app_id replaced in place.
+        assert_eq!(merged[0].steam_folder, "Custom Folder");
+        assert_eq!(merged[0].steam_app_id, base[0].steam_app_id);
+        // Override by name replaced the second entry (same position).
+        assert_eq!(merged[1].steam_app_id, "888888");
+        // The unmatched entry was appended and is findable.
+        assert_eq!(find_in(&merged, "999999").name, "My Custom Game");
     }
-    out
+
+    fn find_in<'a>(games: &'a [KnownGame], steam_id: &str) -> &'a KnownGame {
+        games.iter().find(|g| g.steam_app_id == steam_id).unwrap()
+    }
 }
