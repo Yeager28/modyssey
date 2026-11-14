@@ -1,6 +1,6 @@
 [package]
 name = "modyssey-app"
-description = "Modyssey GPUI application shell (milestone M3)"
+description = "Modyssey GPUI application shell"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,3 +10,15 @@ authors.workspace = true
 [lib]
 name = "modyssey_app"
 path = "src/lib.rs"
+
+[[bin]]
+name = "modyssey-app"
+path = "src/main.rs"
+
+[dependencies]
+modyssey-core = { workspace = true }
+modyssey-games = { workspace = true }
+gpui = { workspace = true }
+# See workspace Cargo.toml: forces naga 28's termcolor cfg so it compiles
+# against the codespan-reporting unit unified by gpui's naga 25.
+naga = { workspace = true }

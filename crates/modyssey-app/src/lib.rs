@@ -1,2 +1,10 @@
-// TODO(M3): GPUI application shell — see PLAN.md §5.1 and milestone M3.
-// Stub crate only; no skeleton code ships before the milestone lands.
+//! Modyssey GPUI shell (PLAN.md §6, milestone M3).
+//!
+//! Derivative work of CLF3 (MIT, © SulfurNitride) — see ATTRIBUTION.md and
+//! LICENSE in the repository root.
+
+pub mod screens;
+pub mod ui;
+pub mod workspace;
+
+pub use workspace::{Workspace, WorkspaceState};

@@ -38,7 +38,10 @@ jobs:
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
+        run: >
+          sudo apt-get update && sudo apt-get install -y
+          libfontconfig1-dev libxkbcommon-dev libx11-dev libxcb1-dev
+          libwayland-dev libssl-dev pkg-config
 
       - name: Install 7-Zip (Windows)
         if: runner.os == 'Windows'

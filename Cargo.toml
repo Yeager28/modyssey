@@ -140,6 +140,20 @@ rpassword = "7"
 keyring-core = "1"
 zbus-secret-service-keyring-store = { version = "1", features = ["rt-async-io-crypto-rust"] }
 
+# GUI app shell (GPUI — Zed's framework; exact pin per PLAN.md risk #1:
+# pre-1.0 crate, bump deliberately only)
+gpui = "=0.2.2"
+
+# Feature-unification fix: gpui's blade-graphics (naga 25) enables
+# codespan-reporting/termcolor, which changes codespan's `term::emit`
+# signature for the whole graph; our wgpu 28 pulls naga 28.0.0, whose
+# default (no-termcolor) code path then fails to compile against it
+# (String does not implement termcolor::WriteColor). Building naga 28 with
+# its own `termcolor` cfg aligns its DiagnosticBuffer with the unified
+# codespan features. Only needed in graphs that contain BOTH gpui and
+# wgpu 28 — i.e. the app crate.
+naga = { version = "28.0.0", default-features = false, features = ["termcolor"] }
+
 # Internal crates
 modyssey-core = { path = "crates/modyssey-core" }
 modyssey-sources = { path = "crates/modyssey-sources" }
