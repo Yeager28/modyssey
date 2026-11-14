@@ -63,10 +63,10 @@ jobs:
 
       - name: Test
         run: cargo test --locked -j4
-  # Informational for now: the inherited dependency tree carries 41 known
-  # CVEs (2024-era pins from the CLF3 prototype; see M0-REPORT.md). Burning
-  # those down is scheduled for M1+; until then this job surfaces the report
-  # without blocking the test matrix.
+  # Informational: the M1 dependency pass burned the inherited 41 CVEs down
+  # to 4 findings (3 advisories) that are upstream-pinned and documented with
+  # rationale + revisit triggers in SECURITY-NOTES.md. This job stays
+  # non-blocking until those pins clear; new advisories still surface here.
   audit:
     name: cargo audit
     runs-on: ubuntu-latest

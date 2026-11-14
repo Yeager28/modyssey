@@ -91,7 +91,7 @@ pub(crate) fn log_detail(msg: &str) {
     tracing::info!("{}", msg);
 }
 
-pub(crate) fn current_rss_kb() -> Option<u64> {
+pub fn current_rss_kb() -> Option<u64> {
     let status = fs::read_to_string("/proc/self/status").ok()?;
     for line in status.lines() {
         if line.starts_with("VmRSS:") {

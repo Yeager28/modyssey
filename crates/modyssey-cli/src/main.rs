@@ -15,7 +15,7 @@ use modyssey::installer::{
     CliReporter, ExtractStrategy, InstallConfig, Installer, JsonEventWriter, JsonReporter,
     ProgressCallback, ProgressMode, ProgressReporter, StdioHost,
 };
-use modyssey::{browser_gui, downloaders, game_finder, modlist, settings, textures};
+use modyssey::{browser_gui, downloaders, game_finder, installer, modlist, settings, textures};
 
 /// CLI-facing enum for the `--extract` flag. Maps to the internal
 /// `modyssey::installer::ExtractStrategy` used by the install pipeline.
