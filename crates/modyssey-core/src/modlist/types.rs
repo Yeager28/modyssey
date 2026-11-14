@@ -32,7 +32,46 @@ pub struct Modlist {
     pub is_nsfw: bool,
     pub archives: Vec<Archive>,
     pub directives: Vec<Directive>,
+
+    // ---- Fields new in the `.modyssey` v1 manifest (PLAN.md §4.3) ----
+    // All are optional so a Wabbajack manifest parses unchanged as the
+    // subset; `.modyssey` container readers enforce what is required.
+
+    /// Format version of the manifest. Required in `.modyssey` v1 files;
+    /// absent means a Wabbajack-legacy manifest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format_version: Option<u32>,
+    /// Modlist-data license notice (see MODLIST-POLICY.md). Writers default
+    /// it to [`DEFAULT_LICENSE`] when absent; an empty string means
+    /// [`UNDECLARED_LICENSE`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    /// Optional index of the container's blob entries (name, size, xxHash64)
+    /// for corruption detection before any install work starts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blob_index: Option<Vec<BlobIndexEntry>>,
+    /// Tool that produced this manifest, e.g. `modyssey 0.3.0`. Wabbajack
+    /// manifests keep `WabbajackVersion`; both fields stay readable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_version: Option<String>,
 }
+
+/// One entry of the manifest's optional `BlobIndex` (`.modyssey` v1):
+/// container entry name, uncompressed size, and xxHash64 (base64,
+/// Wabbajack encoding) of the entry's contents.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BlobIndexEntry {
+    pub entry: String,
+    pub size: u64,
+    pub hash: String,
+}
+
+/// License notice applied when a manifest declares none (MODLIST-POLICY.md).
+pub const DEFAULT_LICENSE: &str = "CC BY-NC-SA 4.0";
+
+/// License notice displayed for a manifest that declares an empty license.
+pub const UNDECLARED_LICENSE: &str = "Undeclared";
 
 /// Archive (download) definition
 #[derive(Debug, Serialize, Deserialize)]
@@ -510,6 +549,18 @@ impl Modlist {
         TtwRequirement {
             required: !markers_found.is_empty(),
             markers_found,
+        }
+    }
+
+    /// The license notice to display for this list: the declared value when
+    /// set, [`UNDECLARED_LICENSE`] when declared empty, and
+    /// [`DEFAULT_LICENSE`] when absent (MODLIST-POLICY.md — displayed, never
+    /// enforced).
+    pub fn effective_license(&self) -> &str {
+        match self.license.as_deref() {
+            Some(license) if !license.trim().is_empty() => license,
+            Some(_) => UNDECLARED_LICENSE,
+            None => DEFAULT_LICENSE,
         }
     }
 }

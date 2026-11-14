@@ -6,6 +6,7 @@
 //! - Storing directives in SQLite for efficient access
 
 pub mod browser;
+pub mod container;
 mod db;
 pub mod install_manifest;
 mod types;
@@ -13,6 +14,11 @@ pub mod update;
 
 #[allow(unused_imports)] // Used by lib crate (GUI)
 pub use browser::*;
+#[allow(unused_imports)] // Public surface for the CLI/GUI crates.
+pub use container::{
+    convert_wabbajack_to_modyssey, detect_container_format, parse_modlist_container,
+    parse_modyssey_file, ContainerFormat, ConvertStats, MANIFEST_ENTRY_NAME, MARKER_ENTRY_NAME,
+};
 pub use db::*;
 #[allow(unused_imports)] // Several items are public surface; not all used in the binary.
 pub use install_manifest::{
@@ -148,8 +154,13 @@ pub fn validate_modlist_paths(modlist: &Modlist) -> Result<()> {
     Ok(())
 }
 
-/// Open a .wabbajack file and import into a database
-/// If the database exists but is for a different wabbajack file, it will be cleared and re-imported
+/// Open a modlist container (.wabbajack or .modyssey) and import into a
+/// database.
+///
+/// If the database exists but is for a different modlist file, it will be
+/// cleared and re-imported. `.modyssey` files additionally get their
+/// BlobIndex verified on every load — integrity is a load-time guarantee,
+/// not an import-time one.
 pub fn import_wabbajack_to_db(wabbajack_path: &Path, db_path: &Path) -> Result<ModlistDb> {
     let current_fingerprint = calculate_file_fingerprint(wabbajack_path)?;
     let wabbajack_path_str = wabbajack_path.to_string_lossy().to_string();
@@ -195,7 +206,7 @@ pub fn import_wabbajack_to_db(wabbajack_path: &Path, db_path: &Path) -> Result<M
 
     if needs_reimport {
         info!("Importing modlist to database...");
-        let modlist = parse_wabbajack_file(wabbajack_path)?;
+        let modlist = parse_modlist_container(wabbajack_path)?;
 
         db.import_modlist(&modlist)?;
 
@@ -204,7 +215,12 @@ pub fn import_wabbajack_to_db(wabbajack_path: &Path, db_path: &Path) -> Result<M
         db.set_metadata("wabbajack_path", &wabbajack_path_str)?;
         db.set_metadata("path_validation", PATH_VALIDATION_VERSION)?;
     } else {
-        info!("Using existing database (wabbajack file unchanged)");
+        info!("Using existing database (modlist file unchanged)");
+        // The cached import skips re-parsing, but a .modyssey container must
+        // still be integrity-checked on every load (BlobIndex).
+        if detect_container_format(wabbajack_path)? == ContainerFormat::Modyssey {
+            parse_modyssey_file(wabbajack_path)?;
+        }
     }
 
     let stats = db.get_directive_stats()?;
