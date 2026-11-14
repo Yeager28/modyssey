@@ -104,9 +104,9 @@ enum Commands {
         host_metadata: bool,
     },
 
-    /// Install a Wabbajack modlist
+    /// Install a modlist (.wabbajack or .modyssey)
     Install {
-        /// Path or URL to the .wabbajack file
+        /// Path or URL to the .wabbajack or .modyssey file
         wabbajack_file: String,
 
         /// Directory for downloaded archives
@@ -237,10 +237,21 @@ enum Commands {
     /// Show current saved settings
     Config,
 
-    /// Show information about a Wabbajack modlist
+    /// Show information about a modlist (.wabbajack or .modyssey)
     Info {
-        /// Path to the .wabbajack file
+        /// Path to the modlist file
         wabbajack_file: PathBuf,
+    },
+
+    /// Convert a .wabbajack modlist to the .modyssey format (lossless)
+    Convert {
+        /// Path to the input .wabbajack file
+        input: PathBuf,
+
+        /// Output .modyssey path (defaults to the input path with the
+        /// extension replaced)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
 
     /// Explicit Fluorine Manager utilities (never run automatically).
@@ -773,7 +784,7 @@ async fn main() -> Result<()> {
             };
 
             if let Some(writer) = &hosted_writer {
-                let plan = modlist::parse_wabbajack_file(&wabbajack_file)?;
+                let plan = modlist::parse_modlist_container(&wabbajack_file)?;
                 let download_size: u64 = plan.archives.iter().map(|archive| archive.size).sum();
                 let artifacts: Vec<_> = plan
                     .archives
@@ -1115,14 +1126,27 @@ async fn main() -> Result<()> {
         Commands::Info { wabbajack_file } => {
             println!("Parsing {}...\n", wabbajack_file.display());
 
-            let modlist = modlist::parse_wabbajack_file(&wabbajack_file)?;
+            let format = modlist::detect_container_format(&wabbajack_file)?;
+            let modlist = modlist::parse_modlist_container(&wabbajack_file)?;
 
             println!("=== Modlist Information ===");
+            println!(
+                "Format:            {}",
+                match format {
+                    modlist::ContainerFormat::Modyssey =>
+                        format!(".modyssey v{}", modlist.format_version.unwrap_or_default()),
+                    modlist::ContainerFormat::Wabbajack => ".wabbajack (Wabbajack)".to_string(),
+                }
+            );
             println!("Name:              {}", modlist.name);
             println!("Author:            {}", modlist.author);
             println!("Version:           {}", modlist.version);
             println!("Game:              {}", modlist.game_type);
             println!("Wabbajack Version: {}", modlist.wabbajack_version);
+            if let Some(tool) = &modlist.tool_version {
+                println!("Tool Version:      {tool}");
+            }
+            println!("License:           {}", modlist.effective_license());
             println!(
                 "NSFW:              {}",
                 if modlist.is_nsfw { "Yes" } else { "No" }
@@ -1164,6 +1188,35 @@ async fn main() -> Result<()> {
             for (source, count) in counts {
                 println!("{:>8}  {}", count, source);
             }
+        }
+
+        Commands::Convert { input, output } => {
+            let output = output.unwrap_or_else(|| {
+                let mut out = input.clone();
+                out.set_extension("modyssey");
+                out
+            });
+
+            println!("Converting {} -> {}", input.display(), output.display());
+            let stats = modlist::convert_wabbajack_to_modyssey(&input, &output)?;
+
+            println!("\n=== Conversion Complete ===");
+            println!(
+                "Modlist:    {} v{}",
+                stats.modlist_name, stats.modlist_version
+            );
+            println!("Archives:   {}", stats.archives);
+            println!("Directives: {}", stats.directives);
+            println!(
+                "Blobs:      {} ({} bytes, copied byte-for-byte)",
+                stats.blobs,
+                format_size(stats.blob_bytes),
+            );
+            println!(
+                "Output:     {} ({})",
+                output.display(),
+                format_size(stats.output_bytes)
+            );
         }
 
         Commands::Fluorine { action } => {
@@ -1713,7 +1766,7 @@ async fn run_modlist_update(
 fn auto_detect_game_dir(wabbajack_path: &std::path::Path) -> Option<(PathBuf, &'static str)> {
     use modyssey::installer::game_preflight::check_game_files_from_modlist;
 
-    let modlist = modlist::parse_wabbajack_file(wabbajack_path).ok()?;
+    let modlist = modlist::parse_modlist_container(wabbajack_path).ok()?;
 
     // Collect every KnownGame entry that maps to this Wabbajack game_type —
     // canonical + store variants (e.g. Fallout 3 + Fallout 3 GOTY share the

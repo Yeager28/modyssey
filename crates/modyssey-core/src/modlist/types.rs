@@ -36,7 +36,6 @@ pub struct Modlist {
     // ---- Fields new in the `.modyssey` v1 manifest (PLAN.md §4.3) ----
     // All are optional so a Wabbajack manifest parses unchanged as the
     // subset; `.modyssey` container readers enforce what is required.
-
     /// Format version of the manifest. Required in `.modyssey` v1 files;
     /// absent means a Wabbajack-legacy manifest.
     #[serde(default, skip_serializing_if = "Option::is_none")]

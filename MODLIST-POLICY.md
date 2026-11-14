@@ -1,6 +1,6 @@
 # Modlist data policy
 
-Modyssey installs modlists. A modlist file (`.wabbajack` today, `.modfile`
+Modyssey installs modlists. A modlist file (`.wabbajack` today, `.modyssey`
 soon) is **data**, not program code — the GPL license of the Modyssey
 application does not and cannot govern it. This document states the policy
 we ask list authors to follow. It is modeled on Wabbajack's long-standing
@@ -11,7 +11,7 @@ modlist policy.
 Modlists built with Modyssey default to the
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 (CC BY-NC-SA 4.0)** notice for the list's data: its structure, ordering,
-configs, patches, and metadata *as a collection*. The `.modfile` manifest
+configs, patches, and metadata *as a collection*. The `.modyssey` manifest
 format carries a `License` field; when a list declares none, the app
 displays "CC BY-NC-SA 4.0" as the default notice.
 

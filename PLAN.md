@@ -1,8 +1,13 @@
 # PLAN — "Majula" (working name): an open-source, Rust + GPUI modlist installer
 
-**Version:** 1.0 · **Date:** 2026-11-13 · **Status:** PLAN ONLY — awaiting owner approval. Nothing in this document has been implemented; it is the deliverable.
+**Version:** 1.1 · **Date:** 2026-11-14 · **Status:** In implementation — M0, M1 complete; M2 (`.modyssey` format) in progress. The original v1.0 plan (2026-11-13) is preserved below as the design record.
 
-**One-line pitch:** A free, open-source, multi-game modlist installer and compiler — a modern alternative to Wabbajack — built in Rust with a GPUI (Zed's UI framework) front-end, a first-class no-Premium-required Nexus flow, its own `.modfile` container format (while reading `.wabbajack` lists today), and Dark Souls II: Scholar of the First Sin as the flagship supported game.
+**Changelog:**
+
+- **v1.1 (2026-11-14):** The container format is named **`.modyssey`** (owner decision; was `.modfile` in v1.0 — renamed throughout §4/§5/§8). The project's working name is **Modyssey** (§2's "Majula" name study is kept as the historical record). Milestone-status table added to §8; new milestone M8 (Vortex→MO2 instance migration) added.
+- **v1.0 (2026-11-13):** Original plan.
+
+**One-line pitch:** A free, open-source, multi-game modlist installer and compiler — a modern alternative to Wabbajack — built in Rust with a GPUI (Zed's UI framework) front-end, a first-class no-Premium-required Nexus flow, its own `.modyssey` container format (while reading `.wabbajack` lists today), and Dark Souls II: Scholar of the First Sin as the flagship supported game.
 
 ---
 
@@ -21,12 +26,12 @@ Design reference: the owner's Modrinth screenshot (`local://pasted-image-bdb262d
 
 ## 1. Executive summary & positioning
 
-**What we're building.** A desktop app for Windows (Linux later) that installs *modlists* — complete, reproducible modded game setups — from a single small file, without redistributing anyone's mods. It downloads each required mod from its original source (Nexus, GitHub, direct HTTP, or the user's own browser session), verifies every byte by xxHash64, applies the list's install directives (copy-from-archive, binary patch, inline file, path-remapped config), and produces a working modded game instance. It also compiles modlists: point it at a source Mod Organizer 2 instance and it emits a `.modfile` containing only hashes, source pointers, patches and configs — never mod bytes.
+**What we're building.** A desktop app for Windows (Linux later) that installs *modlists* — complete, reproducible modded game setups — from a single small file, without redistributing anyone's mods. It downloads each required mod from its original source (Nexus, GitHub, direct HTTP, or the user's own browser session), verifies every byte by xxHash64, applies the list's install directives (copy-from-archive, binary patch, inline file, path-remapped config), and produces a working modded game instance. It also compiles modlists: point it at a source Mod Organizer 2 instance and it emits a `.modyssey` containing only hashes, source pointers, patches and configs — never mod bytes.
 
 **Positioning.** "The open-source Wabbajack alternative." Wabbajack (wabbajack-tools/wabbajack, GPLv3, C#/Avalonia) is the incumbent: mature, trusted, gallery + CDN infrastructure, ~50 supported games. We are not a hostile fork — we are a fresh Rust/GPUI successor that:
 
 - **installs existing `.wabbajack` modlists unchanged** (the format is documented and the CLF3-derived engine already parses/installs our showcase list),
-- **introduces `.modfile`**, a cleaner v1 container with explicit format versioning and a modlist-data license field,
+- **introduces `.modyssey`**, a cleaner v1 container with explicit format versioning and a modlist-data license field,
 - **treats the free Nexus user as a first-class citizen, not an afterthought**: Wabbajack's answer to a free account is an exception thrown mid-queue (`NexusDownloader.cs` L122–124: *"Nexus Premium is required for automatic downloads"*); our answer is a designed queue UX — per-archive browser-open, Downloads-folder pickup, hash verification, advance/retry — plus the Premium API as an opt-in accelerator,
 - **is multi-game by data, not by code**: games live in a shipped `games.json` registry (DS2 SOTFS first-class, Steam app 335300); adding a game is a data edit, not a recompile — an explicit improvement over both Wabbajack's compile-time `GameRegistry.cs` and the prototype's compile-time `KNOWN_GAMES`,
 - **looks like a 2026 product**: GPUI (GPU-accelerated, hybrid immediate/retained mode; the framework Zed ships on Windows stable today) with a Modrinth-inspired dark design system — rounded cards, one vibrant green accent, clean typography.
@@ -78,7 +83,7 @@ GPL-3.0 **does not prohibit commercial use** of the app. Anyone may sell copies 
 
 ### 3.3 Modlist-data policy (the Wabbajack-style dual model, as documentation — not code enforcement)
 
-- The `.modfile` manifest carries a `License` field (§4). **Default: `CC BY-NC-SA 4.0`** — non-commercial, share-alike for the list's data (its structure, configs, patch blobs as a collection). Authors may declare any other license for their own lists.
+- The `.modyssey` manifest carries a `License` field (§4). **Default: `CC BY-NC-SA 4.0`** — non-commercial, share-alike for the list's data (its structure, configs, patch blobs as a collection). Authors may declare any other license for their own lists.
 - We ship a **`MODLIST-POLICY.md` template** (the Wabbajack precedent: their `LICENSE.txt` declares lists CC BY-NC-SA and prohibits paywalling, enforced socially/technically by their team, not by the license of the code). Our template states: lists built with Majula are free to share; access must never be payment-gated; donations are fine — exactly the Wabbajack FAQ position ("The installer must be free, donations must be a 'thank you' — not a purchase").
 - The app **displays** the declared license on the list's detail screen and in the install wizard. It does **not** refuse to install anything — the tool stays dumb; the norms live in the documents and the community. This is deliberate: code-level enforcement of data licensing is both technically futile (trivially stripped) and hostile to the modding ecosystem we want to join.
 
@@ -91,22 +96,22 @@ GPL-3.0 **does not prohibit commercial use** of the app. Anyone may sell copies 
 
 ---
 
-## 4. `.modfile` format spec v1
+## 4. `.modyssey` format spec v1
 
 ### 4.1 Design constraints
 
 1. **Frictionless `.wabbajack` interop** — a WJ manifest must parse as a subset of ours with zero transformation. WJ's manifest is JSON with **PascalCase keys**, `GameType` as a plain string, `Archives[]` with downloader `State` objects tagged by `$type` (`"NexusDownloader, Wabbajack.Lib"`, `"HttpDownloader, Wabbajack.Lib"`, `"ManualDownloader, Wabbajack.Lib"`), and `Directives[]` tagged by `$type` (`FromArchive`, `PatchedFromArchive`, `InlineFile`, `RemappedInlineFile`, …). The prototype's `modlist/types.rs` already deserializes all of this strictly (`#[serde(rename_all = "PascalCase")]`, `#[serde(tag = "$type")]`) — that model **is** the interop layer and is kept verbatim as the v1 schema core.
-2. **Lossless `.wabbajack` → `.modfile` conversion** must be byte-faithful: same manifest semantics, same blobs, install output identical (M2 acceptance).
+2. **Lossless `.wabbajack` → `.modyssey` conversion** must be byte-faithful: same manifest semantics, same blobs, install output identical (M2 acceptance).
 3. **Explicit versioning** — WJ has no format version field (compat is by `WabbajackVersion` heuristics); we add `FormatVersion`.
 4. **Author-visible policy** — the `License` field (§3.3).
 
 ### 4.2 Container
 
-- **File:** `*.modfile` — a standard **ZIP** archive (ZIP64, so blob entries > 4 GiB are legal).
+- **File:** `*.modyssey` — a standard **ZIP** archive (ZIP64, so blob entries > 4 GiB are legal).
   - Why ZIP over WJ's 7z: first-class pure-Rust support in the prototype's existing `zip` crate; ubiquitous tooling for debugging; Unicode-safe entry names if we follow the spec (forward slashes only — WJ's zip extractor had a whole `BackslashEntryTests` suite for this bug; we normalize entry paths on read).
-- **Magic marker (format sniffing):** a zero-priority entry at the archive root named **`modfile`** (mirroring WJ's `modlist` entry naming) whose first bytes are the JSON manifest? No — keep it simpler and faster to sniff: root entry **`MODFILE.v1.marker`** containing `{"format":"modfile","version":1}`. Detection order for any input file: extension `.modfile` → open zip → read marker; extension `.wabbajack` (or 7z signature) → open 7z → read `modlist` entry → WJ-import path. Unknown container → clear error naming what we found.
+- **Magic marker (format sniffing):** a root entry **`MODYSSY.v1.marker`** containing `{"format":"modyssey","version":1}`. Detection order for any input file (extension first, then content): extension `.modyssey` → open zip → verify the marker; extension `.wabbajack` → the WJ reader (`.wabbajack` files are ZIP containers with a `modlist` entry); any other extension → sniff the magic bytes: `PK` zip → marker-or-`modlist` inside, 7z signature → clear error, anything else → clear error naming what was found. A `.modyssey`-named file with Wabbajack contents produces a rename hint rather than a generic failure.
 - **Entries:**
-  - `MODFILE.v1.marker` — magic + format version
+  - `MODYSSY.v1.marker` — magic + format version
   - `manifest.json` — the manifest (§4.3)
   - `<uuid4>` — binary blobs (inline files, patch deltas, remapped-inline bodies), named by UUID exactly like WJ so conversion is a straight copy of entries. Blob identity is established by the directives that reference them (WJ semantics); we additionally record each blob's xxHash64 in the manifest's `BlobIndex` (new, optional) for corruption detection before use.
 - **Compression:** Deflate for manifest/marker; blobs are stored **as-is (Store)** — patch deltas and inline blobs are already compressed or binary; recompressing buys little and costs CPU on 100 MB+ blobs (our showcase list's largest blob is a 16.3 MB octodiff delta; inline `nvngx_dlssnr.dll`-scale files arrive as patches, never raw).
@@ -125,7 +130,7 @@ JSON, UTF-8, **PascalCase keys** (WJ compatibility). Fields new relative to WJ a
   "GameType": "DarkSoulsII",               // plain string, resolved via games registry (never an enum — WJ's own
                                             // string-enum converter means unknown values are data, and stock WJ
                                             // hard-fails them; we resolve via registry and warn if unknown)
-  "ToolVersion": "majula 0.3.0",           // [renamed from WabbajackVersion] tool that built the file
+  "ToolVersion": "modyssey 0.3.0",          // [new] tool that built the file; WJ's `WabbajackVersion` stays readable on import
   "Readme": "https://…",
   "Website": "https://…",
   "License": "CC BY-NC-SA 4.0",            // [new] modlist-data license notice (§3.3); default when absent:
@@ -165,8 +170,8 @@ JSON, UTF-8, **PascalCase keys** (WJ compatibility). Fields new relative to WJ a
 ### 4.5 `.wabbajack` import path (M2) and the future compiler (M5)
 
 - **Import (install-time, no conversion needed):** the engine's manifest model already parses a WJ `modlist` entry directly; the importer opens the 7z, parses, and installs — identical code path, different container reader. This is what makes Majula a *drop-in* Wabbajack alternative on day one.
-- **Conversion (explicit, lossless):** `majula convert in.wabbajack -o out.modfile` reads manifest + blobs, re-emits the zip container with marker + `manifest.json` (WJ fields verbatim, `FormatVersion: 1`, `License` defaulted, `ToolVersion` noting the conversion), blob entries copied byte-for-byte. Acceptance (M2): installing `out.modfile` produces a tree whose per-file xxHash64 set equals the `.wabbajack` install's.
-- **Compiler (M5):** emits `.modfile` natively from a source MO2 instance — the Rust port of `Wabbajack.Compiler` (§5.4). Compiled lists default `License: CC BY-NC-SA 4.0`, author-editable in the compile wizard.
+- **Conversion (explicit, lossless):** `modyssey convert in.wabbajack -o out.modyssey` reads manifest + blobs, re-emits the zip container with marker + `manifest.json` (WJ fields verbatim, `FormatVersion: 1`, `License` defaulted, `ToolVersion` noting the conversion), blob entries copied byte-for-byte. Acceptance (M2): installing `out.modyssey` produces a tree whose per-file xxHash64 set equals the `.wabbajack` install's.
+- **Compiler (M5):** emits `.modyssey` natively from a source MO2 instance — the Rust port of `Wabbajack.Compiler` (§5.4). Compiled lists default `License: CC BY-NC-SA 4.0`, author-editable in the compile wizard.
 
 ---
 
@@ -178,7 +183,7 @@ JSON, UTF-8, **PascalCase keys** (WJ compatibility). Fields new relative to WJ a
 majula/                          # github.com/Yeager28/majula (GPL-3.0-or-later)
 ├── Cargo.toml                   # [workspace]
 ├── crates/
-│   ├── majula-core/             # engine: hashing, manifest model, .modfile/.wabbajack readers,
+│   ├── majula-core/             # engine: hashing, manifest model, .modyssey/.wabbajack readers,
 │   │                            #   verification, install pipeline, patching (octodiff), BSA/textures,
 │   │                            #   archive extraction (zip/7z/rar), progress event stream
 │   ├── majula-sources/          # downloaders: nexus (premium API + OAuth), nexus-manual (free flow),
@@ -186,7 +191,7 @@ majula/                          # github.com/Yeager28/majula (GPL-3.0-or-later)
 │   │                            #   download dispatcher + rate limiter; Downloads-folder watcher
 │   ├── majula-games/            # data-driven game registry: embedded default games.json +
 │   │                            #   user overlays; game finders (Steam/GOG/registry/Heroic)
-│   ├── majula-compiler/         # (M5) MO2 instance → .modfile; NoMatch reporting; allow-lists
+│   ├── majula-compiler/         # (M5) MO2 instance → .modyssey; NoMatch reporting; allow-lists
 │   ├── majula-app/              # GPUI shell (the UI; design-system module inside, Zed `ui`-crate pattern)
 │   └── majula-cli/              # clap CLI: install, info, convert, compile, games, hash-file
 ├── data/games.json              # the shipped registry (also embedded via include_str!)
@@ -280,7 +285,7 @@ Derived from the owner's screenshot analysis (2026-11-13) + live verification of
 
 ### 6.2 Screen-by-screen spec
 
-1. **Discover / Home** — landing screen. Hero: "Install a modlist" drop zone (drag a `.modfile`/`.wabbajack`, or browse) + "Add a list repository" (M7: a URL that serves a list index). Below: recently opened lists as Modrinth-style cards (icon, title, author, game, version, size of downloads required, last installed). No web dependency — everything local-first.
+1. **Discover / Home** — landing screen. Hero: "Install a modlist" drop zone (drag a `.modyssey`/`.wabbajack`, or browse) + "Add a list repository" (M7: a URL that serves a list index). Below: recently opened lists as Modrinth-style cards (icon, title, author, game, version, size of downloads required, last installed). No web dependency — everything local-first.
 2. **Library** — grid of known lists (opened/installed): card = game icon block (top ~70%), title, `game • version • #archives` meta line, status chip (Installed v1.0.1 / Never installed / Update available). Click → list detail (see Install wizard entry), kebab `⋮` → open folder, show manifest, remove.
 3. **List detail / Install wizard** — the money screen. Left column: description, author, license chip (§3.3 — displayed, never enforced), requirements checklist (game located via registry — DS2 Steam 335300 path resolved; disk space for ~8 GB downloads + ~13 GB install; Nexus account state). Right column: **archive manifest table** — every archive with source chip (Nexus / GitHub / Manual), name, size, and per-item state (✔ hash-verified in cache · ↓ downloading · 🖥 awaiting your click · ✖ failed). Footer: path pickers (downloads dir, install dir — engine enforces WJ-style install-path rules), disk-space meter, **Install** button. During install this screen becomes the live progress view (§7.3).
 4. **Downloads queue** — the manual-click UX, full section §7. Shows both lanes (automatic + manual) as one queue with per-item state; the "next manual download" item is pinned with a big **Open download page** button and a "watching your Downloads folder" status line; drag-and-drop zone to adopt a file manually.
@@ -335,7 +340,21 @@ Settings → Nexus account: sign in with a personal API key or OAuth (device flo
 
 ---
 
-## 8. Milestones M0–M7
+## 8. Milestones M0–M8
+
+**Status (2026-11-14):**
+
+| Milestone | Scope | Status |
+|---|---|---|
+| M0 | Foundations & relaunch (repo, licenses, CI, workspace skeleton) | ✅ complete |
+| M1 | Engine crates ported + games registry + install smoke test | ✅ complete |
+| M2 | `.modyssey` v1 format + `.wabbajack` interop | 🔄 in progress |
+| M3 | GPUI shell v1 | pending |
+| M4 | Parity proof & showcase list | pending |
+| M5 | The compiler | pending |
+| M6 | Distribution & trust kit | pending |
+| M7 | Community launch & repositories | pending |
+| M8 | Vortex→MO2 instance migration | pending (new in plan v1.1) |
 
 Each milestone: goal, acceptance criteria (observable), rough effort (focused days of one maintainer; calendar ≈ 2–3× that part-time).
 
@@ -345,11 +364,11 @@ Commit the prototype's ~70 uncommitted files (rebrand + Windows port + DS2 entry
 
 **M1 — Engine crates ported** *(5–10 d)*
 Move prototype modules into `majula-core`/`majula-sources`/`majula-games` per the migration table (§5.3); `majula-cli` regains `install/info/games/hash-file` verbs. Data-driven `games.json` registry live (DS2 entry migrated from `known_games.rs`; the 13 existing entries carried over). Windows Credential Manager keyring wired.
-**Accept:** `majula install "DS2-Modpack-by-Bonkfyre-1.0.1.wabbajack" --downloads … --output …` completes on a clean Windows sandbox with the manual lane (engine-level, CLI prompts) and all 15 archives hash-verified; `majula games list` shows DS2 detected from Steam.
+**Accept:** `modyssey install "DS2-Modpack-by-Bonkfyre-1.0.1.wabbajack" …` completes on a clean Windows sandbox with the manual lane (engine-level, CLI prompts) and all 15 archives hash-verified; `modyssey games` shows DS2 detected from Steam.
 
-**M2 — `.modfile` v1 + `.wabbajack` interop** *(4–7 d)*
+**M2 — `.modyssey` v1 + `.wabbajack` interop** *(4–7 d)*
 Implement §4: marker, manifest v1 (FormatVersion/License/BlobIndex), zip container writer, `convert` verb, blob-index verification on load.
-**Accept:** `majula convert` on the showcase list → `.modfile`; installing the `.modfile` yields an output tree whose complete xxHash64 set is **identical** to the `.wabbajack` install (automated comparison script in `tests/`); unknown-directive and wrong-FormatVersion files produce clear errors before any download.
+**Accept:** `modyssey convert` on the showcase list → `.modyssey`; installing the `.modyssey` yields an output tree whose complete xxHash64 set is **identical** to the `.wabbajack` install (automated comparison script in `tests/`); unknown-directive and wrong-FormatVersion files produce clear errors before any download.
 
 **M3 — GPUI shell v1** *(10–20 d — the learning-curve milestone)*
 `majula-app` with the §6.1 design system (token sheet + component kit), the §6.2 screens (Discover, Library, List detail/Install wizard, Downloads queue with the full §7 manual-lane UX, Games, Settings, Log), §6.3 state architecture. Engine driven entirely from the GUI.
@@ -360,16 +379,21 @@ This is the credibility milestone. Install the showcase list into a sandbox via 
 **Accept:** all 10,616 output files xxHash64-match the known-good instance (incl. the 79 patched files — the 74 recolored HUD DDS + the 158 MB `nvngx_dlssnr.dll` reconstructed from the 16.3 MB delta); install time and peak RAM recorded as the baseline numbers for marketing; any deviation documented root-caused.
 
 **M5 — The compiler** *(15–30 d — the biggest single milestone)*
-`majula-compiler`: MO2 instance → `.modfile`, porting the WJ compile cascade (reference `Wabbajack.Compiler`: VFS-index the MO2/downloads/game roots; meta-file cascade `directURL`/`manualURL`+`prompt`/Nexus mod-file state; MakeStack matching — ignore rules → DirectMatch → tag includes → binary-patch-vs-closest-archive → regex includes → NoMatch abort; stubbed-config path remapping; patch economy; download allow-list enforcement with our own `allowlist.yml` seeded from WJ's `ServerWhitelist.yml` conventions). Compile wizard in the GUI (settings, ignore lists, metadata, progress, NoMatch report screen).
-**Accept:** compiling the DS2 source instance produces a `.modfile` that (a) installs back to a tree hash-identical to the source instance, (b) contains **zero mod bytes** from third-party archives (only hashes, patches ≤ size of modified files, inline configs/author-owned files), (c) is comparable in size to the WJ-produced 42.4 MB artifact. NoMatch flow demonstrated on a deliberately dirty instance.
+`majula-compiler`: MO2 instance → `.modyssey`, porting the WJ compile cascade (reference `Wabbajack.Compiler`: VFS-index the MO2/downloads/game roots; meta-file cascade `directURL`/`manualURL`+`prompt`/Nexus mod-file state; MakeStack matching — ignore rules → DirectMatch → tag includes → binary-patch-vs-closest-archive → regex includes → NoMatch abort; stubbed-config path remapping; patch economy; download allow-list enforcement with our own `allowlist.yml` seeded from WJ's `ServerWhitelist.yml` conventions). Compile wizard in the GUI (settings, ignore lists, metadata, progress, NoMatch report screen).
+**Accept:** compiling the DS2 source instance produces a `.modyssey` that (a) installs back to a tree hash-identical to the source instance, (b) contains **zero mod bytes** from third-party archives (only hashes, patches ≤ size of modified files, inline configs/author-owned files), (c) is comparable in size to the WJ-produced 42.4 MB artifact. NoMatch flow demonstrated on a deliberately dirty instance.
 
 **M6 — Distribution & trust kit** *(3–5 d)*
-Per §9: release pipeline (tag → CI builds → SHA-256 manifest → GitHub release), VirusTotal submission workflow, SECURITY.md + private vulnerability reporting, signing step (even if initially self-signed/deferred — the pipeline must have the hook), README marketing pass (§10), user docs (install guide, list-author guide for `.modfile`).
+Per §9: release pipeline (tag → CI builds → SHA-256 manifest → GitHub release), VirusTotal submission workflow, SECURITY.md + private vulnerability reporting, signing step (even if initially self-signed/deferred — the pipeline must have the hook), README marketing pass (§10), user docs (install guide, list-author guide for `.modyssey`).
 **Accept:** a tagged release exists with hashes, a VT report link, and docs a stranger can follow cold; `winget` package submitted (stretch).
 
 **M7 — Community launch & repositories** *(5–8 d + ongoing)*
-List-repository support (M7 scope: read a static JSON index + download `.modfile`s from any HTTPS host / GitHub releases — the "custom repository" model from the WJ wiki, minus their server); the Discover screen gains a repo browser. Launch per §10: Reddit posts, Nexus forums thread, Discords, Show HN.
+List-repository support (M7 scope: read a static JSON index + download `.modyssey`s from any HTTPS host / GitHub releases — the "custom repository" model from the WJ wiki, minus their server); the Discover screen gains a repo browser. Launch per §10: Reddit posts, Nexus forums thread, Discords, Show HN.
 **Accept:** v1.0.0 announcement post is live with an honest comparison table; at least one non-owner user installs the DS2 list from a repository and reports success; issue triage cadence established.
+
+
+**M8 — Vortex→MO2 instance migration** *(5–8 d, post-1.0)*
+A first-class migration tool for users arriving from Vortex: read a Vortex profile (its `vortex.json` game/store settings, plugin (`plugins.txt` + load-order files), and mod staging folders) and materialize it as a proper **Mod Organizer 2 instance** — mods as separate `mods/<modname>` directories with correct `meta.ini` stubs, load order preserved, INI and profile folders generated — so the result is immediately installable/moddable with Modyssey lists and standard MO2 tooling. **Feature inspiration: "Mod Manager Migrator" (nexusmods.com/site/mods/545, CC BY-NC-ND) — inspiration only; zero code copying. Our own Rust implementation** (Vortex state is on-disk JSON + directories; no Vortex binaries are invoked). Ships as a `modyssey migrate-vortex` CLI verb plus a GUI flow; every step is dry-run-previewable and never mutates the Vortex profile in place (staging folders are copied or linked, not moved).
+**Accept:** a real Vortex profile for a supported game migrates into a working MO2 instance that MO2 opens with the correct plugin order and mod list, verified against the source profile's load order; the Vortex installation remains untouched and functional afterwards; a dry-run report lists every planned action before anything is written.
 
 **Total rough effort:** ~48–91 focused days → **3–6 months part-time** to M7; M0–M4 (the "installs our list beautifully" product) is ~25–48 focused days, reachable in weeks if full-time.
 
@@ -392,7 +416,7 @@ A mod-list installer asks users to run an unsigned binary that downloads gigabyt
 
 ## 10. Marketing & positioning
 
-**README pitch (draft headline):** "Majula is a free, open-source modlist installer — a modern alternative to Wabbajack. It installs your existing `.wabbajack` modlists today, and its own `.modfile` lists tomorrow. Rust-fast, GPU-rendered UI, and a first-class experience for free Nexus accounts: no Premium required, just your browser and a few clicks."
+**README pitch (draft headline):** "Majula is a free, open-source modlist installer — a modern alternative to Wabbajack. It installs your existing `.wabbajack` modlists today, and its own `.modyssey` lists tomorrow. Rust-fast, GPU-rendered UI, and a first-class experience for free Nexus accounts: no Premium required, just your browser and a few clicks."
 
 **Honest comparison table (README centerpiece — honesty is the differentiator):**
 
@@ -402,7 +426,7 @@ A mod-list installer asks users to run an unsigned binary that downloads gigabyt
 | Language / runtime | C# / .NET 10 | Rust / none (single binary) |
 | UI | Avalonia | GPUI (Zed's GPU-accelerated framework) |
 | Installs `.wabbajack` | ✔ | ✔ (day one) |
-| Own format | `.wabbajack` (7z, no version field) | `.modfile` (zip, explicit `FormatVersion`, list-license field) |
+| Own format | `.wabbajack` (7z, no version field) | `.modyssey` (zip, explicit `FormatVersion`, list-license field) |
 | Free Nexus account | Manual click-through (works; exception-driven UX) | Manual lane designed as the primary flow (browser-open, watched Downloads folder, hash-verified pickup) |
 | Premium Nexus | Full-speed API | Same (optional accelerator) |
 | Games | ~50, compile-time registry, Bethesda-centric | Data-driven `games.json`; **DS2 SOTFS first-class**; community-extensible without rebuilds |
@@ -518,4 +542,4 @@ Then: M1 begins (engine crate moves + CLI parity on the showcase list).
 | Research corpus | `H:/Games/DS2 Modlist/.frostfx-research/` | wabbajack-plan.md, wj-phase3b-private-recompile.md (+ phases 0–3) |
 | List distribution | `Yeager28/ds2-modpack-bonkfyre` (GitHub, private) | Release v1.0 with patched-WJ zips + list; subscriber-facing notes already anticipate the Majula app |
 
-*End of plan. Nothing has been implemented; this document is the deliverable. Next gate: owner approval of §2 (name), §3 (licensing resolution), and §8 (milestone scope).*
+*End of plan v1.1. M0/M1 have landed; see the §8 status table for current progress.*

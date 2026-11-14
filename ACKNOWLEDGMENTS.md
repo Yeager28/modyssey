@@ -11,7 +11,7 @@ Modyssey stands on the shoulders of:
   modlist distribution. Modyssey would not exist without the ecosystem
   Wabbajack built. <https://github.com/wabbajack-tools/wabbajack>
 - The **octodiff** authors — the binary-delta patch format used inside
-  `.wabbajack` (and, later, `.modfile`) archives for
+  `.wabbajack` (and, later, `.modyssey`) archives for
   `PatchedFromArchive`-style directives; Modyssey's patcher reads and writes
   that format.
 - The **Dark Souls II** and **Bethesda** modding communities — the modlist

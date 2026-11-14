@@ -1,6 +1,6 @@
 [package]
 name = "modyssey-compiler"
-description = "Modyssey modlist compiler: MO2 instance → .modfile (milestone M5)"
+description = "Modyssey modlist compiler: MO2 instance → .modyssey (milestone M5)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -999,6 +999,10 @@ mod tests {
             is_nsfw: false,
             archives: vec![],
             directives: vec![],
+            format_version: None,
+            license: None,
+            blob_index: None,
+            tool_version: None,
         };
 
         let precheck = precheck_ttw(&modlist);
@@ -1073,6 +1077,10 @@ mod tests {
                     source_data_id: uuid::Uuid::new_v4(),
                 },
             )],
+            format_version: None,
+            license: None,
+            blob_index: None,
+            tool_version: None,
         };
 
         let precheck = precheck_ttw(&modlist);

@@ -52,7 +52,7 @@ compiler, planned for milestone M5).
 |---|---|---|
 | Modyssey as a whole | GPL-3.0-or-later | [LICENSE](LICENSE) |
 | CLF3-derived engine code | MIT (© SulfurNitride) | [LICENSE-MIT-CLF3](LICENSE-MIT-CLF3) |
-| Modlist data (`.modfile` lists) | policy notice, not code license | [MODLIST-POLICY.md](MODLIST-POLICY.md) |
+| Modlist data (`.modyssey` lists) | policy notice, not code license | [MODLIST-POLICY.md](MODLIST-POLICY.md) |
 
 See also [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) and
 [CONTRIBUTING.md](CONTRIBUTING.md).

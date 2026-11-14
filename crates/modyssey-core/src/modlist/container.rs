@@ -23,10 +23,10 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tracing::info;
+use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipArchive;
 use zip::ZipWriter;
-use zip::write::SimpleFileOptions;
 
 use super::types::{BlobIndexEntry, DEFAULT_LICENSE, UNDECLARED_LICENSE};
 use super::{validate_modlist_paths, Modlist};
@@ -102,9 +102,9 @@ pub fn detect_container_format(path: &Path) -> Result<ContainerFormat> {
     match extension.as_deref() {
         Some("modyssey") => {
             let mut archive = open_zip(path)?;
-            if has_entry(&mut archive, MARKER_ENTRY_NAME) {
+            if has_entry(&archive, MARKER_ENTRY_NAME) {
                 Ok(ContainerFormat::Modyssey)
-            } else if has_entry(&mut archive, MODLIST_ENTRY_NAME) {
+            } else if has_entry(&archive, MODLIST_ENTRY_NAME) {
                 bail!(
                     "{} contains a Wabbajack 'modlist' entry but no {} marker — it looks \
                      like a .wabbajack file with the wrong extension. Rename it to \
@@ -136,10 +136,10 @@ pub fn detect_container_format(path: &Path) -> Result<ContainerFormat> {
             }
             if read >= 2 && &magic[..2] == b"PK" {
                 let mut archive = open_zip(path)?;
-                if has_entry(&mut archive, MARKER_ENTRY_NAME) {
+                if has_entry(&archive, MARKER_ENTRY_NAME) {
                     return Ok(ContainerFormat::Modyssey);
                 }
-                if has_entry(&mut archive, MODLIST_ENTRY_NAME) {
+                if has_entry(&archive, MODLIST_ENTRY_NAME) {
                     return Ok(ContainerFormat::Wabbajack);
                 }
                 bail!(
@@ -219,8 +219,8 @@ pub fn parse_modyssey_file(path: &Path) -> Result<Modlist> {
         .read_to_end(&mut manifest_bytes)
         .context("Failed to read manifest entry")?;
 
-    let modlist: Modlist =
-        serde_json::from_slice(&manifest_bytes).context("Failed to parse modyssey manifest JSON")?;
+    let modlist: Modlist = serde_json::from_slice(&manifest_bytes)
+        .context("Failed to parse modyssey manifest JSON")?;
 
     // --- FormatVersion gate (required in v1 files) ------------------------
     match modlist.format_version {
@@ -240,7 +240,10 @@ pub fn parse_modyssey_file(path: &Path) -> Result<Modlist> {
     // --- BlobIndex verification (early corruption detection) --------------
     if let Some(index) = &modlist.blob_index {
         verify_blob_index(&mut archive, index).with_context(|| {
-            format!("Refusing to install '{}': the .modyssey file is corrupted", modlist.name)
+            format!(
+                "Refusing to install '{}': the .modyssey file is corrupted",
+                modlist.name
+            )
         })?;
     }
 
@@ -326,10 +329,9 @@ pub fn convert_wabbajack_to_modyssey(input: &Path, output: &Path) -> Result<Conv
     info!("Converting {} -> {}", input.display(), output.display());
 
     let file = File::open(input).with_context(|| format!("Failed to open: {}", input.display()))?;
-    let mut src =
-        ZipArchive::new(BufReader::new(file)).context("Failed to read as ZIP archive")?;
+    let mut src = ZipArchive::new(BufReader::new(file)).context("Failed to read as ZIP archive")?;
 
-    if has_entry(&mut src, MARKER_ENTRY_NAME) {
+    if has_entry(&src, MARKER_ENTRY_NAME) {
         bail!(
             "{} is already a .modyssey file — conversion only takes .wabbajack inputs.",
             input.display()
@@ -352,8 +354,8 @@ pub fn convert_wabbajack_to_modyssey(input: &Path, output: &Path) -> Result<Conv
 
     // Typed parse first: validates the manifest parses with our model and
     // gives us checked stats. The verbatim JSON is what gets re-emitted.
-    let typed: Modlist = serde_json::from_slice(&modlist_bytes)
-        .context("Failed to parse Wabbajack modlist JSON")?;
+    let typed: Modlist =
+        serde_json::from_slice(&modlist_bytes).context("Failed to parse Wabbajack modlist JSON")?;
     validate_modlist_paths(&typed)?;
 
     let mut manifest = serde_json::from_slice::<serde_json::Value>(&modlist_bytes)
@@ -436,7 +438,8 @@ pub fn convert_wabbajack_to_modyssey(input: &Path, output: &Path) -> Result<Conv
             .by_name(&blob.entry)
             .with_context(|| format!("Failed to read blob entry {:?}", blob.entry))?;
         blob_bytes_copied += std::io::copy(&mut entry, &mut zip)
-            .with_context(|| format!("Failed to copy blob entry {:?}", blob.entry))? as u64;
+            .with_context(|| format!("Failed to copy blob entry {:?}", blob.entry))?
+            as u64;
     }
 
     zip.finish().context("Failed to finish .modyssey file")?;
@@ -494,14 +497,22 @@ fn describe_entries(archive: &mut ZipArchive<BufReader<File>>) -> String {
         format!(
             "Found {} entries, starting with: {}.",
             total,
-            names.iter().map(|n| format!("{n:?}")).collect::<Vec<_>>().join(", ")
+            names
+                .iter()
+                .map(|n| format!("{n:?}"))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
     } else {
         format!(
             "Found {} entr{}: {}.",
             total,
             if total == 1 { "y" } else { "ies" },
-            names.iter().map(|n| format!("{n:?}")).collect::<Vec<_>>().join(", ")
+            names
+                .iter()
+                .map(|n| format!("{n:?}"))
+                .collect::<Vec<_>>()
+                .join(", ")
         )
     }
 }
@@ -530,10 +541,7 @@ fn hash_reader<R: Read>(reader: &mut R) -> Result<(u64, String)> {
         hasher.update(&buf[..read]);
         size += read as u64;
     }
-    Ok((
-        size,
-        STANDARD.encode(hasher.digest().to_le_bytes()),
-    ))
+    Ok((size, STANDARD.encode(hasher.digest().to_le_bytes())))
 }
 
 #[cfg(test)]
@@ -636,8 +644,7 @@ mod tests {
             serde_json::to_string(&Marker::v1()).unwrap(),
             r#"{"format":"modyssey","version":1}"#
         );
-        let marker: Marker =
-            serde_json::from_str(r#"{"format":"modyssey","version":1}"#).unwrap();
+        let marker: Marker = serde_json::from_str(r#"{"format":"modyssey","version":1}"#).unwrap();
         assert_eq!(marker, Marker::v1());
     }
 
@@ -645,7 +652,12 @@ mod tests {
     fn modyssey_file_round_trips() {
         let dir = temp_path("roundtrip");
         let path = dir.join("list.modyssey");
-        write_modyssey(&path, &Marker::v1(), &v1_manifest_json(), &[(BLOB, BLOB_BYTES)]);
+        write_modyssey(
+            &path,
+            &Marker::v1(),
+            &v1_manifest_json(),
+            &[(BLOB, BLOB_BYTES)],
+        );
 
         let modlist = parse_modyssey_file(&path).unwrap();
         assert_eq!(modlist.name, "Test List");
@@ -727,7 +739,12 @@ mod tests {
 
         // correct index passes
         let path = dir.join("good.modyssey");
-        write_modyssey(&path, &Marker::v1(), &v1_manifest_json(), &[(BLOB, BLOB_BYTES)]);
+        write_modyssey(
+            &path,
+            &Marker::v1(),
+            &v1_manifest_json(),
+            &[(BLOB, BLOB_BYTES)],
+        );
         parse_modyssey_file(&path).unwrap();
 
         let _ = fs::remove_dir_all(&dir);
@@ -737,10 +754,7 @@ mod tests {
     fn absent_blob_index_is_accepted() {
         let dir = temp_path("no-blobindex");
         let mut manifest = v1_manifest_json();
-        manifest
-            .as_object_mut()
-            .unwrap()
-            .remove("BlobIndex");
+        manifest.as_object_mut().unwrap().remove("BlobIndex");
         let path = dir.join("list.modyssey");
         write_modyssey(&path, &Marker::v1(), &manifest, &[(BLOB, BLOB_BYTES)]);
         parse_modyssey_file(&path).unwrap();
@@ -773,10 +787,7 @@ mod tests {
 
         // manifest FormatVersion missing (required in v1 files)
         let mut manifest = v1_manifest_json();
-        manifest
-            .as_object_mut()
-            .unwrap()
-            .remove("FormatVersion");
+        manifest.as_object_mut().unwrap().remove("FormatVersion");
         let path = dir.join("no-version.modyssey");
         write_modyssey(&path, &Marker::v1(), &manifest, &[(BLOB, BLOB_BYTES)]);
         let err = parse_modyssey_file(&path).unwrap_err().to_string();
@@ -805,7 +816,10 @@ mod tests {
         write_wabbajack(
             &input,
             &wj_manifest_json(),
-            &[(BLOB, BLOB_BYTES), ("22222222-2222-2222-2222-222222222222", b"def")],
+            &[
+                (BLOB, BLOB_BYTES),
+                ("22222222-2222-2222-2222-222222222222", b"def"),
+            ],
         );
 
         let stats = convert_wabbajack_to_modyssey(&input, &output).unwrap();
@@ -817,13 +831,20 @@ mod tests {
         assert!(stats.output_bytes > 0);
 
         // detection + parse of the produced file
-        assert_eq!(detect_container_format(&output).unwrap(), ContainerFormat::Modyssey);
+        assert_eq!(
+            detect_container_format(&output).unwrap(),
+            ContainerFormat::Modyssey
+        );
         let modlist = parse_modyssey_file(&output).unwrap();
         assert_eq!(modlist.name, "Test List");
         assert_eq!(modlist.wabbajack_version, "4.3.2.2"); // WJ field kept
         assert_eq!(modlist.format_version, Some(FORMAT_VERSION));
         assert_eq!(modlist.license.as_deref(), Some(DEFAULT_LICENSE));
-        assert!(modlist.tool_version.as_deref().unwrap().starts_with("modyssey"));
+        assert!(modlist
+            .tool_version
+            .as_deref()
+            .unwrap()
+            .starts_with("modyssey"));
         assert_eq!(modlist.blob_index.as_ref().map(|i| i.len()), Some(2));
 
         // WJ fields verbatim, including fields the typed model ignores
@@ -831,7 +852,10 @@ mod tests {
             let file = File::open(&output).unwrap();
             let mut zip = ZipArchive::new(BufReader::new(file)).unwrap();
             let mut bytes = Vec::new();
-            zip.by_name(MANIFEST_ENTRY_NAME).unwrap().read_to_end(&mut bytes).unwrap();
+            zip.by_name(MANIFEST_ENTRY_NAME)
+                .unwrap()
+                .read_to_end(&mut bytes)
+                .unwrap();
             serde_json::from_slice(&bytes).unwrap()
         };
         assert_eq!(manifest["WabbajackVersion"], serde_json::json!("4.3.2.2"));
@@ -853,7 +877,9 @@ mod tests {
         }
 
         // re-converting an already-converted file is rejected
-        let err = convert_wabbajack_to_modyssey(&output, &output).unwrap_err().to_string();
+        let err = convert_wabbajack_to_modyssey(&output, &output)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("already a .modyssey file"), "{err}");
 
         let _ = fs::remove_dir_all(&dir);
@@ -867,23 +893,40 @@ mod tests {
 
         // .modyssey + marker
         let path = dir.join("a.modyssey");
-        write_modyssey(&path, &Marker::v1(), &v1_manifest_json(), &[(BLOB, BLOB_BYTES)]);
-        assert_eq!(detect_container_format(&path).unwrap(), ContainerFormat::Modyssey);
+        write_modyssey(
+            &path,
+            &Marker::v1(),
+            &v1_manifest_json(),
+            &[(BLOB, BLOB_BYTES)],
+        );
+        assert_eq!(
+            detect_container_format(&path).unwrap(),
+            ContainerFormat::Modyssey
+        );
 
         // .wabbajack by extension
         let path = dir.join("b.wabbajack");
         write_wabbajack(&path, &wj_manifest_json(), &[]);
-        assert_eq!(detect_container_format(&path).unwrap(), ContainerFormat::Wabbajack);
+        assert_eq!(
+            detect_container_format(&path).unwrap(),
+            ContainerFormat::Wabbajack
+        );
 
         // unknown extension, ZIP content with a modlist entry
         let path = dir.join("c.dat");
         write_wabbajack(&path, &wj_manifest_json(), &[]);
-        assert_eq!(detect_container_format(&path).unwrap(), ContainerFormat::Wabbajack);
+        assert_eq!(
+            detect_container_format(&path).unwrap(),
+            ContainerFormat::Wabbajack
+        );
 
         // unknown extension, ZIP content with a marker
         let path = dir.join("d.dat");
         write_modyssey(&path, &Marker::v1(), &v1_manifest_json(), &[]);
-        assert_eq!(detect_container_format(&path).unwrap(), ContainerFormat::Modyssey);
+        assert_eq!(
+            detect_container_format(&path).unwrap(),
+            ContainerFormat::Modyssey
+        );
 
         // .modyssey extension but Wabbajack contents: clear error
         let path = dir.join("e.modyssey");
@@ -908,23 +951,25 @@ mod tests {
         // open — a clear error from the WJ path.
         let path = dir.join("g2.wabbajack");
         fs::write(&path, SEVENZIP_MAGIC).unwrap();
-        assert_eq!(detect_container_format(&path).unwrap(), ContainerFormat::Wabbajack);
+        assert_eq!(
+            detect_container_format(&path).unwrap(),
+            ContainerFormat::Wabbajack
+        );
         let err = parse_modlist_container(&path).unwrap_err().to_string();
         assert!(err.contains("ZIP"), "{err}");
 
         // parse_modlist_container dispatches both ways
         let wj = dir.join("i.wabbajack");
         write_wabbajack(&wj, &wj_manifest_json(), &[]);
-        assert_eq!(
-            parse_modlist_container(&wj).unwrap().name,
-            "Test List"
-        );
+        assert_eq!(parse_modlist_container(&wj).unwrap().name, "Test List");
         let md = dir.join("j.modyssey");
-        write_modyssey(&md, &Marker::v1(), &v1_manifest_json(), &[(BLOB, BLOB_BYTES)]);
-        assert_eq!(
-            parse_modlist_container(&md).unwrap().name,
-            "Test List"
+        write_modyssey(
+            &md,
+            &Marker::v1(),
+            &v1_manifest_json(),
+            &[(BLOB, BLOB_BYTES)],
         );
+        assert_eq!(parse_modlist_container(&md).unwrap().name, "Test List");
 
         let _ = fs::remove_dir_all(&dir);
     }
